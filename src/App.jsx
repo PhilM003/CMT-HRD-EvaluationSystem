@@ -5,7 +5,7 @@ import {
   ArrowLeft, Users, FileText, ChevronRight, AlertCircle, RotateCcw, X, Eye, UploadCloud, Settings, TableProperties,
   LogOut, Lock, Key, Printer
 } from 'lucide-react';
-import logoImage from '.assets\enterprise.png';
+import logoImage from './assets/enterprise.png';
 
 // API Configuration
 const API_URL = 'http://localhost:3005';
@@ -15,7 +15,7 @@ const API_URL = 'http://localhost:3005';
 // ==========================================
 // ใส่ลิงก์รูปโลโก้ของคุณที่นี่ (เช่น 'https://your-company.com/logo.png')
 // หากปล่อยว่างไว้ ('') ระบบจะใช้ไอคอนมาตรฐานแทน
-  const LOGO_URL = 'enterprise.png'; // ตัวอย่าง: รูปโลโก้สายฟ้า (เปลี่ยนลิงก์นี้ได้เลย)
+  const LOGO_URL = logoImage; // ตัวอย่าง: รูปโลโก้สายฟ้า (เปลี่ยนลิงก์นี้ได้เลย)
 
 // Helper to format date
 const formatDateForInput = (dateString) => {
@@ -149,7 +149,7 @@ export default function App() {
 
   // --- RENDER ---
   if (!user) {
-    return <LoginView onLogin={handleLogin} logoUrl={logoImage} />;
+    return <LoginView onLogin={handleLogin} logoUrl={LOGO_URL} />;
   }
 
   return (
@@ -161,7 +161,7 @@ export default function App() {
             {/* --- LOGO SECTION --- */}
             <div className="bg-white/10 p-2 rounded-lg flex items-center justify-center">
               {LOGO_URL ? (
-                <img src={logoImage} alt="App Logo" className="w-6 h-6 object-contain" />
+                <img src={LOGO_URL} alt="App Logo" className="w-6 h-6 object-contain" />
               ) : (
                 <ClipboardList size={24} className="text-primary-gold"/>
               )}
@@ -263,7 +263,7 @@ const LoginView = ({ onLogin, logoUrl }) => {
              <div className="inline-flex p-4 bg-primary-navy rounded-2xl shadow-lg mb-4 justify-center items-center">
                 {/* --- LOGIN LOGO --- */}
                 {logoUrl ? (
-                   <img src={logoImage} alt="Logo" className="w-12 h-12 object-contain" />
+                   <img src={logoUrl} alt="Logo" className="w-12 h-12 object-contain" />
                 ) : (
                    <LayoutDashboard size={40} className="text-primary-gold"/>
                 )}
