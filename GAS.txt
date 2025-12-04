@@ -1,0 +1,198 @@
+// code.gs
+
+const SPREADSHEET_ID = 'ใส่_ID_ของ_GOOGLE_SHEET_ที่นี่'; // ดู ID จาก URL ของ Sheet
+
+function doGet(e) {
+  const action = e.parameter.action;
+  
+  if (action === 'getEvaluations') {
+    return readData('Evaluations');
+  } else if (action === 'getEmployees') {
+    return readData('Employees');
+  } else if (action === 'getUsers') {
+    return readData('Users');
+  } else if (action === 'getEvaluationById') {
+    const id = e.parameter.id;
+    const data = getDataArray('Evaluations');
+    const item = data.find(r => r.id == id);
+    return responseJSON(item || {message: "Not found"});
+  }
+  
+  return responseJSON({message: "Invalid action"});
+}
+
+function doPost(e) {
+  const data = JSON.parse(e.postData.contents);
+  const action = e.parameter.action || data.action;
+
+  if (action === 'saveEvaluation') {
+    return saveEvaluation(data);
+  } else if (action === 'deleteEvaluation') {
+    return deleteRow('Evaluations', data.id);
+  } else if (action === 'syncEmployees') {
+    // Logic sync employee (ถ้าต้องการทำผ่าน GAS)
+    // สำหรับตอนนี้ใช้แบบเดิมที่ Frontend ส่งมา save ทีละคน หรือส่งมาเป็น array ก็ได้
+    return saveEmployee(data); 
+  } else if (action === 'deleteEmployee') {
+    return deleteRow('Employees', data.id);
+  } else if (action === 'sendEmail') {
+    return sendEmail(data);
+  }
+
+  return responseJSON({message: "Invalid action"});
+}
+
+// --- Helper Functions ---
+
+function readData(sheetName) {
+  const data = getDataArray(sheetName);
+  return responseJSON(data);
+}
+
+function getDataArray(sheetName) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ws = ss.getSheetByName(sheetName);
+  const rows = ws.getDataRange().getValues();
+  if (rows.length === 0) return [];
+  
+  const headers = rows[0];
+  const result = [];
+  
+  for (let i = 1; i < rows.length; i++) {
+    let obj = {};
+    for (let j = 0; j < headers.length; j++) {
+      let val = rows[i][j];
+      // พยายาม Parse JSON สำหรับฟิลด์ที่เป็น Object (เช่น ratings, sickLeave)
+      try {
+        if (typeof val === 'string' && (val.startsWith('{') || val.startsWith('['))) {
+          val = JSON.parse(val);
+        }
+      } catch (e) {}
+      obj[headers[j]] = val;
+    }
+    result.push(obj);
+  }
+  return result;
+}
+
+function saveEvaluation(payload) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ws = ss.getSheetByName('Evaluations');
+  
+  // Flatten data: แปลง Object ซับซ้อนให้เป็น String เพื่อเก็บใน Sheet
+  // หรือเก็บเป็น JSON String ก้อนเดียวใน Cell หนึ่งก็ได้ แต่วิธีนี้แยก Column จะดูง่ายกว่า
+  // เพื่อความง่ายและรองรับโค้ดเดิม ผมจะใช้วิธีเก็บ JSON ทั้งก้อนลงใน Column 'data' และเก็บ ID แยก
+  
+  // แต่เพื่อให้โค้ดคุณแก้ Frontend น้อยที่สุด ผมแนะนำให้เก็บแบบ JSON String ก้อนใหญ่
+  // Columns: [id, content]
+  
+  // **วิธีที่แนะนำสำหรับการย้าย db.json มา Sheet แบบด่วน:**
+  // ใช้ Sheet เก็บข้อมูลดิบไปเลย
+  
+  const lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  
+  try {
+    const id = payload.id || Date.now().toString();
+    payload.id = id;
+    
+    const headers = ws.getRange(1, 1, 1, ws.getLastColumn() || 1).getValues()[0];
+    const allData = ws.getDataRange().getValues();
+    
+    // ตรวจสอบว่ามี Header ครบไหม (Mapping ตาม key ของ payload)
+    // เพื่อความง่าย เราจะเก็บข้อมูลแยกคอลัมน์เฉพาะที่สำคัญ ส่วนที่เหลือยัด JSON
+    // แต่เพื่อให้ระบบคุณทำงานต่อได้เลย ผมจะใช้เทคนิค "JSON Storage"
+    // Column A = ID, Column B = Full JSON Data
+    
+    // เช็ค Header
+    if (headers[0] !== 'id') {
+      ws.getRange(1, 1, 1, 2).setValues([['id', 'json_data']]);
+    }
+    
+    let rowIndex = -1;
+    // หาแถวเดิมเพื่อ update
+    for (let i = 1; i < allData.length; i++) {
+      if (allData[i][0] == id) {
+        rowIndex = i + 1;
+        break;
+      }
+    }
+    
+    const jsonString = JSON.stringify(payload);
+    
+    if (rowIndex > 0) {
+      ws.getRange(rowIndex, 2).setValue(jsonString);
+    } else {
+      ws.appendRow([id, jsonString]);
+    }
+    
+    return responseJSON(payload);
+    
+  } catch (e) {
+    return responseJSON({error: e.message});
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+// Override function readData สำหรับแบบ JSON Storage
+function readData(sheetName) {
+   if (sheetName === 'Users') {
+      // Users อาจจะเก็บแบบปกติ
+      return responseJSON([
+        { username: 'admin', password: '1234', name: 'Admin User', role: 'admin' },
+        { username: 'assess', password: '1234', name: 'Head of Dept', role: 'assessor' },
+        { username: 'hr', password: '1234', name: 'HR Manager', role: 'hr' },
+        { username: 'ceo', password: '1234', name: 'CEO', role: 'approver' }
+      ]);
+   }
+
+   const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+   const ws = ss.getSheetByName(sheetName);
+   if (ws.getLastRow() <= 1) return responseJSON([]);
+   
+   const rows = ws.getRange(2, 1, ws.getLastRow() - 1, 2).getValues();
+   const result = rows.map(r => {
+     try {
+       return JSON.parse(r[1]);
+     } catch (e) { return null; }
+   }).filter(item => item !== null);
+   
+   // เรียงลำดับตามวันที่อัปเดต (ถ้ามี)
+   return responseJSON(result.reverse());
+}
+
+function deleteRow(sheetName, id) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const ws = ss.getSheetByName(sheetName);
+  const data = ws.getDataRange().getValues();
+  
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] == id) {
+      ws.deleteRow(i + 1);
+      return responseJSON({success: true});
+    }
+  }
+  return responseJSON({success: false, message: "ID not found"});
+}
+
+function sendEmail(data) {
+  const { to, subject, html } = data; // data.link รวมอยู่ใน html แล้วตามโค้ดคุณ
+  
+  try {
+    MailApp.sendEmail({
+      to: to,
+      subject: subject,
+      htmlBody: html
+    });
+    return responseJSON({success: true});
+  } catch (e) {
+    return responseJSON({error: e.message});
+  }
+}
+
+function responseJSON(data) {
+  return ContentService
+    .createTextOutput(JSON.stringify(data))
+    .setMimeType(ContentService.MimeType.JSON);
+}

@@ -1,0 +1,6 @@
+run json database
+npx json-server --watch db.json --port 3001
+
+
+# EMAIL_USER=burin.wo@gmail.com
+# EMAIL_PASS=jjnb bqob fcfh arzf
