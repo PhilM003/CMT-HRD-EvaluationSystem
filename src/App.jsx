@@ -3,21 +3,30 @@ import {
   User, Calendar, ClipboardList, CheckCircle, Calculator, PenTool, Search, 
   Save, Trash2, Database, LayoutDashboard, FileSpreadsheet, Plus, 
   ArrowLeft, Users, FileText, ChevronRight, AlertCircle, RotateCcw, X, Eye, UploadCloud, Settings, TableProperties,
-  LogOut, Lock, Key, Printer, ChevronDown, Loader2 // เพิ่ม Loader2
+  LogOut, Lock, Key, Printer, ChevronDown, Loader2
 } from 'lucide-react';
 
-// API Configuration
-// ✅ อย่าลืมเปลี่ยนเป็น URL ของ Google Apps Script ถ้า Deploy แล้ว
+import logoImage from './assets/enterprise.png'; 
+
+// ============================================================================
+// ⚠️ สำคัญ: ใส่ URL ของ Google Apps Script Web App ที่ Deploy ใหม่ (Version ล่าสุด)
+// ต้องลงท้ายด้วย /exec และตั้งค่า Who has access เป็น "Anyone"
+// ============================================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbwAL1ISDOIC_0TVh4RZniHn34vP0O7x5yBHlyxGZ1-u8ctgEg9OtG9dNMAZwxH7sNww/exec'; 
-
-
-// ==========================================
-// 🎨 ปรับแต่งโลโก้และไอคอน (LOGO CONFIG)
-// ==========================================
-import logoImage from './assets/enterprise.png'; // ตรวจสอบ path รูปให้ถูกต้อง
 const LOGO_URL = logoImage;
 
-// Helper to format date
+// --- Helper: API Caller (แก้ CORS ถาวร) ---
+const apiCall = async (payload) => {
+  // เทคนิค: ใช้ POST ตลอดกาล และไม่ระบุ Header Content-Type
+  // Browser จะส่งเป็น text/plain ทำให้ไม่ติด CORS Preflight
+  const response = await fetch(API_URL, {
+    method: 'POST',
+    body: JSON.stringify(payload)
+  });
+  return await response.json();
+};
+
+// --- Helper: Format Date ---
 const formatDateForInput = (dateString) => {
   if (!dateString) return '';
   try {
@@ -27,7 +36,7 @@ const formatDateForInput = (dateString) => {
   return '';
 };
 
-// --- ✨ NEW COMPONENT: Loading Overlay (หน้าจอรอโหลดแบบเบลอ) ---
+// --- Component: Loading Overlay ---
 const GlobalLoading = () => (
   <div className="fixed inset-0 z-[100] bg-white/50 backdrop-blur-sm flex items-center justify-center animate-in fade-in duration-200">
     <div className="bg-white p-6 rounded-2xl shadow-2xl flex flex-col items-center gap-4 border border-secondary-silver/50">
@@ -45,15 +54,12 @@ const GlobalLoading = () => (
   </div>
 );
 
+// ==========================================
+// MAIN APP COMPONENT
+// ==========================================
 export default function App() {
   // Global State
-  // 🟢 ปรับ Default User ให้เป็น Admin เลย ไม่ต้องรอ Login
-  const [user, setUser] = useState({ 
-      username: 'admin', 
-      name: 'Admin User', 
-      role: 'admin' 
-  }); 
-  
+  const [user, setUser] = useState({ username: 'admin', name: 'Admin User', role: 'admin' }); 
   const [view, setView] = useState('dashboard'); 
   const [showEmployeeModal, setShowEmployeeModal] = useState(false); 
   
@@ -61,14 +67,10 @@ export default function App() {
   const [evaluations, setEvaluations] = useState([]);
   const [employees, setEmployees] = useState([]); 
   const [selectedEval, setSelectedEval] = useState(null);
-  
-  // 🟢 State สำหรับ Loading (ใช้ควบคุม Popup)
   const [isLoading, setIsLoading] = useState(false);
-  
-  // Magic Link State
   const [autoOpenRole, setAutoOpenRole] = useState(null);
 
-  // List of Users for Role Switcher (Mock Data สำหรับเลือก Role)
+  // Mock Users
   const availableUsers = [
     { username: 'admin', name: 'Admin User', role: 'admin' },
     { username: 'assess', name: 'Head of Dept', role: 'assessor' },
@@ -78,7 +80,7 @@ export default function App() {
 
   // --- Initial Load ---
   useEffect(() => {
-    // 1. Favicon
+    // Favicon
     if (LOGO_URL) {
       const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
       link.type = 'image/x-icon';
@@ -87,7 +89,7 @@ export default function App() {
       document.getElementsByTagName('head')[0].appendChild(link);
     }
 
-    // 2. Magic Link Check
+    // Check Magic Link
     const params = new URLSearchParams(window.location.search);
     const linkEvalId = params.get('eval_id');
     const linkSignRole = params.get('sign_role');
@@ -95,25 +97,20 @@ export default function App() {
     if (linkEvalId && linkSignRole) {
         handleMagicLinkAccess(linkEvalId, linkSignRole);
     } else {
-        // โหลดข้อมูลทันทีเมื่อเปิด App เพราะเราบายพาส Login แล้ว
         fetchEvaluations();
         fetchEmployees();
     }
   }, []);
 
+  // --- API Functions (Using apiCall) ---
   const handleMagicLinkAccess = async (id, role) => {
-      setIsLoading(true); // ✅ เปิด Loading
+      setIsLoading(true);
       try {
-          const guestUser = { 
-              name: `${role.toUpperCase()} (Guest Access)`, 
-              role: role, 
-              username: 'guest' 
-          };
+          const guestUser = { name: `${role.toUpperCase()} (Guest Access)`, role: role, username: 'guest' };
           setUser(guestUser);
           
-          // เปลี่ยนเป็น GET request ตามรูปแบบ GAS
-          const res = await fetch(`${API_URL}?action=getEvaluationById&id=${id}`);
-          const data = await res.json();
+          // ✅ ใช้ apiCall (POST) แทน GET
+          const data = await apiCall({ action: 'getEvaluationById', id: id });
           
           if (!data || data.message === "Not found") throw new Error("Form not found");
 
@@ -124,49 +121,44 @@ export default function App() {
       } catch (e) {
           alert("ไม่พบข้อมูลแบบประเมิน หรือ Link ไม่ถูกต้อง");
       } finally {
-          setIsLoading(false); // ✅ ปิด Loading
+          setIsLoading(false);
       }
   };
 
-  // --- API Calls (Updated for GAS) ---
   const fetchEvaluations = async () => {
-    setIsLoading(true); // ✅ เปิด Loading
+    setIsLoading(true);
     try {
-      const res = await fetch(`${API_URL}?action=getEvaluations`);
-      const data = await res.json();
+      // ✅ ใช้ apiCall (POST) แทน GET
+      const data = await apiCall({ action: 'getEvaluations' });
       setEvaluations(Array.isArray(data) ? data : []);
     } catch (error) { 
         console.error("Connection Error:", error); 
     } finally {
-        setIsLoading(false); // ✅ ปิด Loading
+        setIsLoading(false);
     }
   };
 
   const fetchEmployees = async () => {
-    // ไม่ต้อง loading ตรงนี้ก็ได้จะได้ไม่รก หรือจะใส่ก็ได้
     try {
-      const res = await fetch(`${API_URL}?action=getEmployees`);
-      const data = await res.json();
+      // ✅ ใช้ apiCall (POST) แทน GET
+      const data = await apiCall({ action: 'getEmployees' });
       setEmployees(Array.isArray(data) ? data : []);
     } catch (error) { console.log("No employees found"); }
   };
 
-  // --- Role Switcher Logic ---
   const handleRoleSwitch = (e) => {
       const selectedUsername = e.target.value;
       const newUser = availableUsers.find(u => u.username === selectedUsername);
       if (newUser) {
           setIsLoading(true);
-          // จำลองการโหลดนิดนึงให้ user รู้สึกว่าเปลี่ยน role แล้ว
           setTimeout(() => {
             setUser(newUser);
-            setView('dashboard'); // กลับไปหน้า Dashboard เมื่อเปลี่ยน Role
+            setView('dashboard');
             setIsLoading(false);
           }, 500);
       }
   };
 
-  // --- Actions ---
   const handleCreateNew = () => { setSelectedEval(null); setView('form'); setAutoOpenRole(null); };
   const handleEdit = (evaluation) => { setSelectedEval(evaluation); setView('form'); setAutoOpenRole(null); };
   
@@ -174,18 +166,15 @@ export default function App() {
     e.stopPropagation();
     if(!confirm("⚠️ ต้องการลบแบบประเมินนี้ใช่หรือไม่?")) return;
     
-    setIsLoading(true); // ✅ เปิด Loading
+    setIsLoading(true);
     try { 
-        // เปลี่ยนเป็น POST action=deleteEvaluation
-        await fetch(API_URL, {
-            method: 'POST',
-            body: JSON.stringify({ action: 'deleteEvaluation', id: id })
-        });
+        // ✅ ใช้ apiCall (POST)
+        await apiCall({ action: 'deleteEvaluation', id: id });
         await fetchEvaluations(); 
     } catch (error) { 
         alert("Error deleting record"); 
     } finally {
-        setIsLoading(false); // ✅ ปิด Loading
+        setIsLoading(false);
     }
   };
   
@@ -195,13 +184,13 @@ export default function App() {
       setAutoOpenRole(null); 
   };
 
+  // --- RENDER ---
   return (
     <div className="min-h-screen font-sans text-neutral-dark bg-secondary-cream/30">
       
-      {/* ✨ แสดง Loading Overlay เมื่อ isLoading = true */}
       {isLoading && <GlobalLoading />}
 
-      {/* Top Bar with Role Switcher */}
+      {/* Top Bar */}
       <div className="bg-primary-navy text-white px-6 py-3 flex justify-between items-center shadow-md sticky top-0 z-50">
          <div className="flex items-center gap-3">
             <div className="bg-white/10 p-2 rounded-lg flex items-center justify-center">
@@ -218,7 +207,6 @@ export default function App() {
          </div>
          
          <div className="flex items-center gap-4">
-            {/* 🟢 Role Switcher (แทนที่ส่วนแสดงชื่อ User เดิม) */}
             <div className="relative group">
                 <div className="flex items-center gap-3 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition-all cursor-pointer border border-white/10">
                     <div className="text-right hidden md:block">
@@ -254,7 +242,6 @@ export default function App() {
           onDelete={handleDelete}
           onManageEmployees={() => setShowEmployeeModal(true)} 
           currentRole={user.role} 
-          isLoading={isLoading}
         />
       ) : (
         <EvaluationForm 
@@ -264,7 +251,6 @@ export default function App() {
           onBack={() => { setView('dashboard'); setAutoOpenRole(null); }}
           onSaveComplete={handleSaveComplete}
           autoOpenSignRole={autoOpenRole} 
-          // ส่ง propsetIsLoading ไปให้ form ใช้ด้วย
           setGlobalLoading={setIsLoading} 
         />
       )}
@@ -275,7 +261,7 @@ export default function App() {
           onClose={() => setShowEmployeeModal(false)}
           currentEmployees={employees}
           onRefresh={fetchEmployees}
-          setGlobalLoading={setIsLoading} // ส่ง Loading ไปใช้ใน Modal
+          setGlobalLoading={setIsLoading}
         />
       )}
 
@@ -283,15 +269,11 @@ export default function App() {
   );
 }
 
-// ----------------------------------------------------------------------
-// ⚠️ ส่วนประกอบอื่นๆ (DashboardView, EvaluationForm, ฯลฯ) 
-// ให้คงเดิมไว้ แต่ต้องแก้ฟังก์ชัน saveToDB และ handleSaveSignature 
-// ใน EvaluationForm ให้เรียก setGlobalLoading(true) ด้วย
-// ----------------------------------------------------------------------
+// ==========================================
+// SUB COMPONENTS
+// ==========================================
 
-// ... (DashboardView Code เดิม) ...
-const DashboardView = ({ evaluations, onCreate, onEdit, onDelete, onManageEmployees, currentRole, isLoading }) => {
-    // ... code เดิมทั้งหมด ...
+const DashboardView = ({ evaluations, onCreate, onEdit, onDelete, onManageEmployees, currentRole }) => {
     return (
     <div className="max-w-7xl mx-auto p-8 animate-in fade-in duration-500">
       
@@ -320,7 +302,7 @@ const DashboardView = ({ evaluations, onCreate, onEdit, onDelete, onManageEmploy
         </div>
       </div>
 
-      {/* Stats Cards - Colorful & Vibrant */}
+      {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-10">
          <StatCard 
             label="แบบประเมินทั้งหมด" 
@@ -429,9 +411,7 @@ const DashboardView = ({ evaluations, onCreate, onEdit, onDelete, onManageEmploy
 };
 
 
-// 🔄 แก้ไข EvaluationForm เพื่อรับ props setGlobalLoading
 const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, onSaveComplete, autoOpenSignRole, setGlobalLoading }) => {
-  // ... state declarations ...
   const [status, setStatus] = useState(initialData?.status || 'draft');
   const [dbId, setDbId] = useState(initialData?.id || null);
   const [isComplete, setIsComplete] = useState(false);
@@ -452,7 +432,6 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
   const [totalScore, setTotalScore] = useState(0);
   const [avgScore, setAvgScore] = useState(0);
 
-  // ... (useEffect score calc, magic link logic, handlers อื่นๆ คงเดิม) ...
   useEffect(() => {
     if (autoOpenSignRole && !signatureModalOpen) {
        const isHRTurn = autoOpenSignRole === 'hr' && status === 'pending_hr';
@@ -479,7 +458,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     { id: 10, weight: 5, t: 'กฎระเบียบ (Rules)' }
   ];
 
-  // --- Score Calculation ---
+  // Score Calculation
   useEffect(() => {
     let weightedSum = 0; 
     let rawSum = 0;      
@@ -502,14 +481,6 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     const value = e.target.value;
     setFormData(prev => ({ ...prev, employeeName: value }));
     setShowEmployeeDropdown(true); 
-  };
-
-  const handleInputFocus = () => {
-    if (employeeList.length > 0) setShowEmployeeDropdown(true);
-  };
-
-  const handleInputBlur = () => {
-    setTimeout(() => setShowEmployeeDropdown(false), 200);
   };
 
   const selectEmployee = (emp) => {
@@ -562,7 +533,6 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
   const canEdit = (section) => {
     if (currentRole === 'hr' && section === 'hr') return true;
     if (currentRole === 'approver' && section === 'approver') return true;
-
     if (currentRole === 'admin') {
        if (section === 'general') return status === 'draft' || !initialData;
        return false; 
@@ -590,11 +560,10 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     setSignatureModalOpen(true);
   };
 
-  // ✅ Updated saveToDB with Loading
   const saveToDB = async () => {
     if (!formData.employeeName) return alert("❌ กรุณาระบุชื่อพนักงาน");
     
-    setGlobalLoading(true); // 🟢 Start loading
+    setGlobalLoading(true);
     const payload = { 
         ...formData, 
         status, 
@@ -604,12 +573,8 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     };
     
     try {
-      // POST ไปยัง GAS
-      const res = await fetch(API_URL, { 
-          method: 'POST', 
-          body: JSON.stringify(payload) 
-      });
-      const savedData = await res.json();
+      // ✅ ใช้ apiCall (POST)
+      const savedData = await apiCall(payload);
       
       setDbId(savedData.id); 
       alert("✅ บันทึกข้อมูลเรียบร้อย");
@@ -617,11 +582,10 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     } catch (error) { 
         alert("❌ บันทึกไม่สำเร็จ"); 
     } finally { 
-        setGlobalLoading(false); // 🟢 Stop loading
+        setGlobalLoading(false);
     }
   };
 
-  // ✅ Updated handleSaveSignature with Loading
   const handleSaveSignature = async (dataUrl) => { 
     let newStatus = status;
     if (signTarget === 'assessor') newStatus = 'pending_hr';
@@ -638,14 +602,10 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     };
 
     try {
-        setGlobalLoading(true); // 🟢 Start loading
+        setGlobalLoading(true);
         
-        // Save to DB
-        const res = await fetch(API_URL, {
-            method: 'POST',
-            body: JSON.stringify(updatedFormData)
-        });
-        const savedData = await res.json();
+        // ✅ ใช้ apiCall (POST)
+        const savedData = await apiCall(updatedFormData);
         
         setDbId(savedData.id);
         setFormData(savedData);
@@ -665,14 +625,10 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
         console.error(error);
         alert("เกิดข้อผิดพลาด: " + error.message);
     } finally {
-        setGlobalLoading(false); // 🟢 Stop loading
+        setGlobalLoading(false);
     }
   };
 
-  // ... (isComplete check, return Form JSX) ...
-  // ===============================================
-  // ส่วนที่เพิ่ม: หน้าจอ Success (เมื่อเซ็นเสร็จ)
-  // ===============================================
   if (isComplete) {
     return (
       <div className="flex flex-col h-screen items-center justify-center bg-green-50 p-4 animate-in fade-in zoom-in duration-300">
@@ -707,9 +663,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     );
   }
 
-  // ===============================================
-  // ส่วนแสดงผล Form ปกติ (ถ้ายังไม่เสร็จ)
-  // ===============================================
+  // Render Form
   return (
     <div className="max-w-5xl mx-auto p-6 space-y-8 bg-neutral-white shadow-2xl min-h-screen relative animate-in slide-in-from-right duration-300">
       {/* Sticky Header */}
@@ -756,8 +710,8 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
                     name="employeeName" 
                     value={formData.employeeName} 
                     onChange={handleNameSearch} 
-                    onFocus={handleInputFocus} 
-                    onBlur={handleInputBlur}
+                    onFocus={()=>{if(employeeList.length>0)setShowEmployeeDropdown(true)}} 
+                    onBlur={()=>{setTimeout(()=>setShowEmployeeDropdown(false),200)}}
                     disabled={isReadOnly('general')} 
                     className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pl-10 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none text-neutral-dark placeholder-neutral-medium/50 transition-all font-medium shadow-sm" 
                     placeholder="พิมพ์ชื่อเพื่อค้นหา หรือคลิกเพื่อเลือก..."
@@ -820,20 +774,12 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
                     <div className="flex gap-1.5">
                       {[1, 2, 3, 4, 5, 6, 7].map((num) => {
                         const isSelected = formData.ratings[topic.id] === num;
-                        
-                        // Color logic
-                        let colorClass = "hover:bg-gray-100 border-gray-200 text-gray-400"; // default
+                        let colorClass = "hover:bg-gray-100 border-gray-200 text-gray-400"; 
                         if (isSelected) {
                            if (num <= 2) colorClass = "bg-red-500 border-red-500 text-white shadow-md ring-2 ring-red-200";
                            else if (num <= 4) colorClass = "bg-secondary-darkgold border-secondary-darkgold text-white shadow-md ring-2 ring-yellow-100";
                            else colorClass = "bg-primary-navy border-primary-navy text-white shadow-md ring-2 ring-blue-100";
-                        } else {
-                           // Hover effects
-                           if (num <= 2) colorClass += " hover:text-red-500 hover:border-red-200 hover:bg-red-50";
-                           else if (num <= 4) colorClass += " hover:text-secondary-darkgold hover:border-secondary-darkgold hover:bg-yellow-50";
-                           else colorClass += " hover:text-primary-navy hover:border-primary-navy hover:bg-blue-50";
                         }
-
                         return (
                           <button 
                             key={num} 
@@ -981,9 +927,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
   );
 };
 
-// 🔄 แก้ไข EmployeeManagementModal ให้รับ props setGlobalLoading
 const EmployeeManagementModal = ({ onClose, currentEmployees, onRefresh, setGlobalLoading }) => {
-  // ... state ...
   const [sheetId, setSheetId] = useState("13ko9sbzz9_RlBqvb02g-A6_Tc3sMq1YP7-CjlhGKB9E");
   const [sheetName, setSheetName] = useState("");
   const [headers, setHeaders] = useState([]);
@@ -1065,21 +1009,13 @@ const EmployeeManagementModal = ({ onClose, currentEmployees, onRefresh, setGlob
     const dataToSync = getPreviewData();
     if(dataToSync.length === 0) return alert("ไม่มีข้อมูลที่สามารถนำเข้าได้");
     
-    setGlobalLoading(true); // 🟢 ใช้ Global Loading
-    setIsLoading(true); // ใช้ local loading เพื่อ disable ปุ่มด้วย
+    setGlobalLoading(true); 
+    setIsLoading(true); 
 
     try {
-       // ส่ง array ไปทีเดียวเลย ถ้า Backend รับได้ หรือ loop ส่ง
-       // เนื่องจาก GAS รับ request ถี่ๆ ไม่ค่อยดี เราส่งทีละคน หรือส่งเป็นก้อนใหญ่ถ้า GAS รองรับ
-       // สมมติส่งทีละคนตามเดิม
       for (const emp of dataToSync) {
-         // ต้องเปลี่ยน fetch เป็น GAS API format
-         // สำหรับ employee sync อาจจะต้องปรับ backend ให้รับ array จะดีกว่า
-         // แต่ถ้าเอาเร็วก็ยิงรัวๆ (อาจจะช้า)
-         await fetch(API_URL, {
-            method: 'POST', 
-            body: JSON.stringify({ action: 'syncEmployees', ...emp }) // สมมติ backend จัดการ upsert ให้
-         });
+         // ✅ ใช้ apiCall (POST)
+         await apiCall({ action: 'syncEmployees', ...emp });
       }
 
       await onRefresh(); 
@@ -1091,7 +1027,7 @@ const EmployeeManagementModal = ({ onClose, currentEmployees, onRefresh, setGlob
       alert("❌ เกิดข้อผิดพลาด: " + error.message);
     } finally { 
       setIsLoading(false); 
-      setGlobalLoading(false); // 🟢 ปิด Global Loading
+      setGlobalLoading(false); 
     }
   };
 
@@ -1099,18 +1035,14 @@ const EmployeeManagementModal = ({ onClose, currentEmployees, onRefresh, setGlob
     if(!confirm(`ต้องการลบข้อมูลพนักงานรหัส ${id} ใช่หรือไม่?`)) return;
     setGlobalLoading(true);
     try {
-      await fetch(API_URL, {
-          method: 'POST',
-          body: JSON.stringify({ action: 'deleteEmployee', id: id })
-      });
+      // ✅ ใช้ apiCall (POST)
+      await apiCall({ action: 'deleteEmployee', id: id });
       await onRefresh();
     } catch (error) {
       alert("❌ เกิดข้อผิดพลาด: " + error.message);
     } finally { setGlobalLoading(false); }
   };
 
-  // ... (deleteSelected logic, JSX render) ...
-  // (JSX ของ Modal เหมือนเดิม แต่ปุ่ม confirmSync กับ delete เรียกฟังก์ชันใหม่)
   return (
     <div className="fixed inset-0 z-[60] bg-neutral-dark/60 flex items-center justify-center backdrop-blur-md p-4 animate-in fade-in zoom-in duration-200">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden border border-secondary-silver/50">
@@ -1145,7 +1077,6 @@ const EmployeeManagementModal = ({ onClose, currentEmployees, onRefresh, setGlob
                        <div className="bg-red-100 p-2 rounded-lg text-red-600"><Trash2 size={20}/></div>
                        <span className="text-red-800 font-bold">เลือกแล้ว {selectedIds.length} รายการ</span>
                     </div>
-                    {/* 👇 ปุ่ม deleteSelected ต้อง implement ให้เรียก setGlobalLoading ด้วยถ้าทำได้ */}
                     <button className="bg-red-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-red-700 transition-all hover:shadow-lg flex items-center gap-2">
                         ยืนยันลบ ({selectedIds.length})
                     </button>
@@ -1162,18 +1093,14 @@ const EmployeeManagementModal = ({ onClose, currentEmployees, onRefresh, setGlob
                    <table className="w-full text-left">
                       <thead className="bg-secondary-cream/50 text-xs uppercase text-primary-navy font-bold border-b border-secondary-silver/50">
                         <tr>
-                          <th className="p-4 w-12 text-center">
-                              {/* <input type="checkbox" onChange={handleSelectAll} ... /> */}
-                          </th>
+                          <th className="p-4 w-12 text-center"></th>
                           <th className="p-4">ID</th><th className="p-4">Name</th><th className="p-4">Position</th><th className="p-4 text-right">Action</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-secondary-silver/30 text-sm">
                         {currentEmployees.map(emp => (
                           <tr key={emp.id} className={`hover:bg-secondary-cream/30 transition-colors ${selectedIds.includes(emp.id) ? 'bg-secondary-cream/50' : ''}`}>
-                            <td className="p-4 text-center">
-                               {/* <input type="checkbox" ... /> */}
-                            </td>
+                            <td className="p-4 text-center"></td>
                             <td className="p-4 font-mono font-bold text-primary-navy">{emp.id}</td>
                             <td className="p-4 font-bold text-neutral-dark">{emp.name}</td>
                             <td className="p-4 text-neutral-medium"><span className="bg-neutral-light px-2 py-1 rounded text-xs font-bold">{emp.position}</span></td>
@@ -1209,7 +1136,6 @@ const EmployeeManagementModal = ({ onClose, currentEmployees, onRefresh, setGlob
                   <div className="flex-1 overflow-y-auto p-8">
                      <div className="mb-8 bg-secondary-cream/30 p-6 rounded-2xl border border-secondary-silver/50">
                         <h4 className="font-bold text-primary-navy mb-4 flex items-center gap-2 text-lg"><Settings size={20} className="text-primary-gold"/> จับคู่คอลัมน์ (Map Columns)</h4>
-                        {/* ... mapping selects ... */}
                      </div>
                      <div className="bg-white border border-secondary-silver/50 rounded-xl overflow-hidden shadow-sm">
                         <div className="p-4 bg-gray-50 border-b border-secondary-silver/50 flex justify-between items-center">
@@ -1218,7 +1144,6 @@ const EmployeeManagementModal = ({ onClose, currentEmployees, onRefresh, setGlob
                               <UploadCloud size={18}/> {isLoading ? 'Importing...' : 'ยืนยันนำเข้า (Confirm)'}
                            </button>
                         </div>
-                        {/* ... table preview ... */}
                      </div>
                   </div>
                 )}
@@ -1263,7 +1188,15 @@ const ScoreBadge = ({ ratings }) => {
 const InputField = ({ label, value, onChange, name, type="text", disabled, placeholder }) => (
   <div>
     <label className="text-xs text-neutral-medium font-bold mb-2 block uppercase tracking-wider">{label}</label>
-    <input type={type} name={name} value={value} onChange={onChange} disabled={disabled} placeholder={placeholder} className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 bg-white text-neutral-dark focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200 disabled:cursor-not-allowed transition-all font-medium"/>
+    <input 
+      type={type} 
+      name={name} 
+      value={value || ''} 
+      onChange={onChange} 
+      disabled={disabled} 
+      placeholder={placeholder} 
+      className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 bg-white text-neutral-dark focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200 disabled:cursor-not-allowed transition-all font-medium"
+    />
   </div>
 );
 
@@ -1338,16 +1271,14 @@ const SignatureModal = ({ onSave, onClose, title }) => {
     )
 };
 
-// --- ฟังก์ชันส่งอีเมลผ่าน Node.js Backend ---
-const sendGmailNotification = async (employeeName, currentStatus, nextStatus, evalId) => { // รับ evalId เพิ่ม
-  
+// --- sendGmailNotification Function ---
+const sendGmailNotification = async (employeeName, currentStatus, nextStatus, evalId) => {
   let toEmail = '';
   let subject = '';
   let messageHtml = '';
-  let signRole = ''; // ระบุว่าใครต้องเซ็น
+  let signRole = ''; 
 
-  // URL ของหน้าเว็บ React ของคุณ (สมมติรันที่ Port 5173)
-  const baseUrl = 'http://localhost:5173'; 
+  const baseUrl = 'https://philm003.github.io/CMT-HRD-EvaluationSystem'; // เปลี่ยนเป็น URL ของ GitHub Pages
 
   if (nextStatus === 'pending_hr') {
       toEmail = 'burin.wo@gmail.com'; 
@@ -1361,40 +1292,37 @@ const sendGmailNotification = async (employeeName, currentStatus, nextStatus, ev
       messageHtml = `<h3>เรียน CEO,</h3><p>ฝ่ายบุคคลตรวจสอบเรียบร้อยแล้ว โปรดพิจารณาอนุมัติ</p>`;
       signRole = 'approver';
   } 
-  
-  // สร้าง Magic Link
-  // รูปแบบ: http://localhost:5173/?eval_id=123&sign_role=hr
-  const magicLink = signRole && evalId ? `${baseUrl}/?eval_id=${evalId}&sign_role=${signRole}` : '';
-
-  if (nextStatus === 'completed') {
+  else if (nextStatus === 'completed') {
       toEmail = 'burin.wo@gmail.com'; 
       subject = `[Completed] ผลประเมิน ${employeeName} เสร็จสมบูรณ์`;
       messageHtml = `<p>การประเมินเสร็จสิ้นแล้ว</p>`;
   }
 
+  const magicLink = signRole && evalId ? `${baseUrl}/?eval_id=${evalId}&sign_role=${signRole}` : '';
+
+  if (magicLink) {
+    messageHtml += `<br/><a href="${magicLink}" style="background-color: #1e293b; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">คลิกเพื่อดำเนินการต่อ (Click Here)</a>`;
+  }
+
   try {
-        await fetch(API_URL, {
-                method: 'POST',
-                body: JSON.stringify({
-                    action: 'sendEmail', // เพิ่ม action
-                    to: toEmail,
-                    subject: subject,
-                    html: messageHtml // ส่ง html ที่มี link แล้วไปเลย
-                }),
-            });
-        console.log('Email sent successfully with link');
+        // ✅ ใช้ apiCall (POST)
+        await apiCall({
+            action: 'sendEmail', 
+            to: toEmail,
+            subject: subject,
+            html: messageHtml 
+        });
+        console.log('Email sent successfully');
     } catch (error) {
       console.error('Email error:', error);
-      alert('❌ ส่งอีเมลไม่สำเร็จ');
+      alert('❌ ส่งอีเมลไม่สำเร็จ (แต่บันทึกข้อมูลแล้ว)');
   }
 };
 
-
-// --- PRINT HELPER FUNCTION (Re-designed for PDF Exact Match) ---
+// --- handlePrint Function ---
 const handlePrint = (data, totalScore, avgScore) => {
   const printWindow = window.open('', '_blank');
   
-  // Helper แปลงวันที่
   const parseDate = (dateStr) => {
       if (!dateStr) return { d:'', m: '', y: '' };
       try {
@@ -1406,22 +1334,6 @@ const handlePrint = (data, totalScore, avgScore) => {
         };
       } catch (e) { return { d:'', m: '', y: '' }; }
   };
-
-const InputField = ({ label, value, onChange, name, type="text", disabled, placeholder }) => (
-  <div>
-    <label className="text-xs text-neutral-medium font-bold mb-2 block uppercase tracking-wider">{label}</label>
-    <input 
-      type={type} 
-      name={name} 
-      // แก้ไขตรงนี้: เพิ่ม || '' เพื่อกันค่าเป็น undefined
-      value={value || ''} 
-      onChange={onChange} 
-      disabled={disabled} 
-      placeholder={placeholder} 
-      className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 bg-white text-neutral-dark focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none disabled:bg-gray-50 disabled:text-gray-400 disabled:border-gray-200 disabled:cursor-not-allowed transition-all font-medium"
-    />
-  </div>
-);
 
   const startD = parseDate(data.startDate);
   const dueD = parseDate(data.dueProbationDate);
@@ -1436,28 +1348,11 @@ const InputField = ({ label, value, onChange, name, type="text", disabled, place
         <title>Probation Evaluation Form</title>
         <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600;700&display=swap" rel="stylesheet">
         <style>
-            /* Reset & Base Config */
             * { box-sizing: border-box; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            body { 
-                font-family: 'Sarabun', sans-serif; 
-                font-size: 12px; 
-                margin: 0; 
-                padding: 0; 
-                background: white;
-                color: #000;
-                line-height: 1.3;
-            }
-
-            /* A4 Paper Config */
+            body { font-family: 'Sarabun', sans-serif; font-size: 12px; margin: 0; padding: 0; background: white; color: #000; line-height: 1.3; }
             @page { size: A4; margin: 10mm 15mm; }
-            @media print {
-                body { margin: 0; }
-                .no-print { display: none; }
-            }
-
+            @media print { body { margin: 0; } .no-print { display: none; } }
             .container { width: 100%; max-width: 210mm; margin: 0 auto; }
-
-            /* Utility Classes */
             .text-center { text-align: center; }
             .text-right { text-align: right; }
             .font-bold { font-weight: bold; }
@@ -1466,77 +1361,43 @@ const InputField = ({ label, value, onChange, name, type="text", disabled, place
             .items-end { align-items: flex-end; }
             .border-b { border-bottom: 1px dotted #000; }
             .w-full { width: 100%; }
-
-            /* Header Section */
             .header { display: flex; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
             .company-info { width: 55%; font-size: 11px; padding-right: 10px; border-right: 2px solid #000; }
             .form-title { width: 45%; display: flex; flex-direction: column; justify-content: center; align-items: center; }
             .form-title h1 { font-size: 16px; margin: 0; font-weight: bold; }
             .form-title p { font-size: 12px; margin: 0; }
-
-            /* Info Section */
             .info-row { display: flex; margin-bottom: 5px; gap: 10px; align-items: flex-end; }
             .field-label { white-space: nowrap; font-weight: bold; }
             .field-value { border-bottom: 1px dotted #000; flex-grow: 1; text-align: center; color: #0033cc; padding-bottom: 0; height: 18px; }
-            
-            /* Attendance Table (Simple Grid) */
             .attendance-box { border: 1px solid #000; padding: 10px; margin-top: 10px; border-radius: 4px; }
             .attendance-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 5px; }
             .att-item { display: flex; align-items: center; font-size: 11px; }
             .att-input { border-bottom: 1px dotted #000; width: 30px; text-align: center; margin: 0 2px; color: blue; }
-
-            /* Evaluation Table Main */
             table.eval-table { width: 100%; border-collapse: collapse; margin-top: 15px; border: 1px solid #000; }
             table.eval-table th, table.eval-table td { border: 1px solid #000; padding: 4px; vertical-align: middle; }
             table.eval-table th { background-color: #f0f0f0; font-weight: bold; text-align: center; height: 40px; }
-            
-            /* Diagonal Header Trick */
-            .diagonal-cell {
-                position: relative;
-                width: 70px;
-                padding: 0 !important;
-                background: linear-gradient(to top right, transparent 48%, #000 49%, #000 51%, transparent 52%);
-            }
+            .diagonal-cell { position: relative; width: 70px; padding: 0 !important; background: linear-gradient(to top right, transparent 48%, #000 49%, #000 51%, transparent 52%); }
             .diag-top { position: absolute; top: 2px; right: 2px; font-size: 10px; text-align: right; line-height: 1; }
             .diag-bottom { position: absolute; bottom: 2px; left: 2px; font-size: 10px; text-align: left; line-height: 1; }
-
-            /* Rating Circles */
-            .rating-circle {
-                display: inline-block;
-                width: 20px; 
-                height: 20px; 
-                border-radius: 50%; 
-                text-align: center;
-                line-height: 18px;
-                margin: 0 auto;
-            }
+            .rating-circle { display: inline-block; width: 20px; height: 20px; border-radius: 50%; text-align: center; line-height: 18px; margin: 0 auto; }
             .selected { border: 2px solid #000; font-weight: bold; background: #ddd; }
-
-            /* Summary Section */
             .summary-box { border: 1px solid #000; border-top: none; display: flex; }
             .opinion-part { width: 65%; padding: 10px; border-right: 1px solid #000; }
             .score-part { width: 35%; padding: 10px; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
-            
             .checkbox-item { display: flex; align-items: flex-end; margin-bottom: 5px; }
             .checkbox-box { width: 14px; height: 14px; border: 1px solid #000; display: inline-block; margin-right: 5px; position: relative; }
             .checkbox-box.checked::after { content: '✓'; position: absolute; top: -4px; left: 1px; font-size: 16px; font-weight: bold; }
-            
             .score-row { display: flex; justify-content: space-between; border: 1px solid #000; padding: 5px; }
             .score-val { font-weight: bold; font-size: 14px; }
-
-            /* Signatures */
             .sig-row { display: flex; justify-content: flex-end; margin-top: 20px; align-items: flex-end; }
             .sig-line { border-bottom: 1px dotted #000; width: 180px; text-align: center; position: relative; height: 30px; }
             .sig-img { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); max-height: 40px; max-width: 150px; }
             .sig-label { margin-right: 5px; font-weight: bold; }
-
-            /* Footer */
             .footer { margin-top: 30px; font-size: 9px; text-align: right; color: #555; }
         </style>
     </head>
     <body>
         <div class="container">
-            
             <header class="header">
                 <div class="company-info">
                     <div><strong>บริษัท คาร์เปท เมกเกอร์ (ประเทศไทย) จำกัด และ</strong></div>
@@ -1549,7 +1410,6 @@ const InputField = ({ label, value, onChange, name, type="text", disabled, place
                     <p>Probation Evaluation Form</p>
                 </div>
             </header>
-
             <div style="margin-bottom: 15px;">
                 <div style="font-weight: bold; margin-bottom: 5px; border-bottom: 1px solid #000; display:inline-block;">ข้อมูลพนักงาน (Employee information)</div>
                 <div class="info-row">
@@ -1566,14 +1426,12 @@ const InputField = ({ label, value, onChange, name, type="text", disabled, place
                     <span class="field-value" style="width: 50px; flex:none;">${startD.d}</span>
                     <span class="field-label">เดือน:</span> <span class="field-value" style="width: 80px; flex:none;">${startD.m}</span>
                     <span class="field-label">พ.ศ.:</span> <span class="field-value" style="width: 50px; flex:none;">${startD.y}</span>
-                    
                     <span style="flex-grow:1;"></span> <span class="field-label">ครบกำหนด (Due):</span> 
                     <span class="field-value" style="width: 50px; flex:none;">${dueD.d}</span>
                     <span class="field-label">เดือน:</span> <span class="field-value" style="width: 80px; flex:none;">${dueD.m}</span>
                     <span class="field-label">พ.ศ.:</span> <span class="field-value" style="width: 50px; flex:none;">${dueD.y}</span>
                 </div>
             </div>
-
             <div class="attendance-box">
                 <div class="flex justify-between" style="border-bottom: 1px solid #ddd; padding-bottom:5px; margin-bottom:5px;">
                     <strong>ข้อมูลสถิติการทำงาน (Time Attendance)</strong>
@@ -1590,7 +1448,6 @@ const InputField = ({ label, value, onChange, name, type="text", disabled, place
                     <div class="att-item">ขาดงาน <span class="att-input">${data.absence?.days || ''}</span> วัน <span class="att-input">${data.absence?.hours || ''}</span> ชม.</div>
                 </div>
             </div>
-
             <div style="margin-top:15px; text-align:center; font-weight:bold; font-size:11px;">
                 เขียนวงกลมล้อมรอบคะแนนที่ประเมินให้ (Write a circle around the rating that is evaluated)
             </div>
@@ -1653,7 +1510,6 @@ const InputField = ({ label, value, onChange, name, type="text", disabled, place
                     </tr>
                 </tfoot>
             </table>
-
             <div class="summary-box">
                 <div class="opinion-part">
                     <strong>ความเห็น (Opinion) :</strong>
@@ -1668,7 +1524,6 @@ const InputField = ({ label, value, onChange, name, type="text", disabled, place
                         <div class="checkbox-box ${data.otherOpinion ? 'checked' : ''}"></div> อื่นๆ (Other) : 
                         <span class="border-b" style="width:250px; display:inline-block; color:blue;">${data.otherOpinionText || ''}</span>
                     </div>
-
                     <div class="sig-row" style="justify-content: flex-start; margin-top:30px;">
                         <span class="sig-label">ลงชื่อผู้ประเมิน (Assessor):</span>
                         <div class="sig-line">
@@ -1676,7 +1531,6 @@ const InputField = ({ label, value, onChange, name, type="text", disabled, place
                         </div>
                     </div>
                 </div>
-
                 <div class="score-part">
                     <div class="score-row">
                         <span>คะแนนรวม (Total):</span>
@@ -1691,13 +1545,11 @@ const InputField = ({ label, value, onChange, name, type="text", disabled, place
                     </div>
                 </div>
             </div>
-
             <div style="border:1px solid #000; border-top:none; padding:15px;">
                 <div class="flex" style="margin-bottom:25px;">
                     <span class="sig-label" style="min-width:150px;">ความเห็น HR:</span>
                     <span class="border-b w-full" style="color:blue;">${data.hrOpinion || ''}</span>
                 </div>
-
                 <div class="flex justify-between" style="padding: 0 50px;">
                     <div class="text-center">
                         <div class="sig-line" style="margin:0 auto;">
@@ -1706,7 +1558,6 @@ const InputField = ({ label, value, onChange, name, type="text", disabled, place
                         <div style="margin-top:5px;">( ฝ่ายทรัพยากรบุคคล )</div>
                         <div style="font-size:10px;">ลงชื่อ (Sign)</div>
                     </div>
-
                     <div class="text-center">
                          <div class="sig-line" style="margin:0 auto;">
                             ${data.approverSign ? `<img src="${data.approverSign}" class="sig-img">` : ''}
@@ -1716,11 +1567,9 @@ const InputField = ({ label, value, onChange, name, type="text", disabled, place
                     </div>
                 </div>
             </div>
-
             <div class="footer">
                 Form.FR-RC-007 แก้ไขครั้งที่ 02 เริ่มใช้วันที่ 17 กุมภาพันธ์ 2563 (Printed: ${printDateStr})
             </div>
-
         </div>
         <script>
              window.onload = function() { setTimeout(function(){ window.print(); }, 500); }
