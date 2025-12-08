@@ -3,31 +3,42 @@ import {
   User, Calendar, ClipboardList, CheckCircle, Calculator, PenTool, Search, 
   Save, Trash2, Database, LayoutDashboard, FileSpreadsheet, Plus, 
   ArrowLeft, Users, FileText, ChevronRight, AlertCircle, RotateCcw, X, Eye, UploadCloud, Settings, TableProperties,
-  LogOut, Lock, Key, Printer, ChevronDown, Loader2
+  LogOut, Lock, Key, Printer, ChevronDown, Loader2, Mail
 } from 'lucide-react';
 
 import logoImage from './assets/enterprise.png'; 
 
 // ============================================================================
-// ⚠️ CONFIGURATION
-// ใส่ URL ของ Google Apps Script Web App ที่ Deploy ล่าสุด (ลงท้ายด้วย /exec)
+// ⚠️ CONFIGURATION: ใส่ URL ของ Web App ล่าสุดที่ Deploy (ลงท้ายด้วย /exec)
 // ============================================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbwAL1ISDOIC_0TVh4RZniHn34vP0O7x5yBHlyxGZ1-u8ctgEg9OtG9dNMAZwxH7sNww/exec'; 
 const LOGO_URL = logoImage;
 
-// --- Helper: API Caller (แก้ CORS ถาวร) ---
+// --- Helper: API Caller (แกะกล่องข้อมูลอัตโนมัติ) ---
 const apiCall = async (payload) => {
-  // เทคนิค: ใช้ POST ตลอดกาล และไม่ระบุ Header Content-Type
-  // Browser จะส่งเป็น text/plain ทำให้ไม่ติด CORS Preflight
-  // Google Apps Script ฝั่งรับต้องเขียนรับแบบ e.postData.contents
-  const response = await fetch(API_URL, {
-    method: 'POST',
-    body: JSON.stringify(payload)
-  });
-  return await response.json();
+  try {
+    const response = await fetch(API_URL, {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    
+    const result = await response.json();
+
+    // 🛡️ Logic แกะกล่อง: ถ้า Backend ส่งมาแบบ { success: true, data: ... }
+    if (result && result.success === true && result.data !== undefined) {
+      return result.data; // ✅ ส่งเฉพาะไส้ใน (data) ออกไป
+    }
+
+    // กรณี Backend ส่งมาแบบ Array ดิบๆ หรือแบบอื่น
+    return result;
+
+  } catch (error) {
+    console.error("API Error:", error);
+    // 🛡️ กันตาย: ถ้าพังให้ส่ง [] หรือ {} ว่างๆ กลับไป แอปจะได้ไม่จอขาว
+    return Array.isArray(payload) ? [] : {}; 
+  }
 };
 
-// --- Helper: Format Date ---
 const formatDateForInput = (dateString) => {
   if (!dateString) return '';
   try {
@@ -63,15 +74,17 @@ export default function App() {
   const [user, setUser] = useState({ username: 'admin', name: 'Admin User', role: 'admin' }); 
   const [view, setView] = useState('dashboard'); 
   const [showEmployeeModal, setShowEmployeeModal] = useState(false); 
+  const [showSettingsModal, setShowSettingsModal] = useState(false); // Modal ตั้งค่า
   
   // Data State
   const [evaluations, setEvaluations] = useState([]);
   const [employees, setEmployees] = useState([]); 
+  const [appSettings, setAppSettings] = useState({ email_hr: '', email_approver: '' }); // เก็บค่า Email
   const [selectedEval, setSelectedEval] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [autoOpenRole, setAutoOpenRole] = useState(null);
 
-  // Mock Users (Role Switcher)
+  // Mock Users
   const availableUsers = [
     { username: 'admin', name: 'Admin User', role: 'admin' },
     { username: 'assess', name: 'Head of Dept', role: 'assessor' },
@@ -101,20 +114,18 @@ export default function App() {
         fetchEvaluations();
         fetchEmployees();
     }
+    // ดึงค่า Settings
+    fetchSettings();
   }, []);
 
-  // --- API Functions (Using apiCall) ---
+  // --- API Functions ---
   const handleMagicLinkAccess = async (id, role) => {
       setIsLoading(true);
       try {
           const guestUser = { name: `${role.toUpperCase()} (Guest Access)`, role: role, username: 'guest' };
           setUser(guestUser);
-          
-          // ✅ ใช้ apiCall (POST) แทน GET
           const data = await apiCall({ action: 'getEvaluationById', id: id });
-          
           if (!data || data.message === "Not found") throw new Error("Form not found");
-
           setSelectedEval(data);
           setView('form');
           setAutoOpenRole(role);
@@ -129,7 +140,6 @@ export default function App() {
   const fetchEvaluations = async () => {
     setIsLoading(true);
     try {
-      // ✅ ใช้ apiCall (POST) แทน GET
       const data = await apiCall({ action: 'getEvaluations' });
       setEvaluations(Array.isArray(data) ? data : []);
     } catch (error) { 
@@ -141,10 +151,19 @@ export default function App() {
 
   const fetchEmployees = async () => {
     try {
-      // ✅ ใช้ apiCall (POST) แทน GET
       const data = await apiCall({ action: 'getEmployees' });
       setEmployees(Array.isArray(data) ? data : []);
-    } catch (error) { console.log("No employees found"); }
+    } catch (error) { console.log("Fetch Employees Error:", error); }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const data = await apiCall({ action: 'getSettings' });
+      setAppSettings({
+        email_hr: data.email_hr || '',
+        email_approver: data.email_approver || ''
+      });
+    } catch (error) { console.error("Settings Error:", error); }
   };
 
   const handleRoleSwitch = (e) => {
@@ -166,10 +185,8 @@ export default function App() {
   const handleDelete = async (id, e) => {
     e.stopPropagation();
     if(!confirm("⚠️ ต้องการลบแบบประเมินนี้ใช่หรือไม่?")) return;
-    
     setIsLoading(true);
     try { 
-        // ✅ ใช้ apiCall (POST)
         await apiCall({ action: 'deleteEvaluation', id: id });
         await fetchEvaluations(); 
     } catch (error) { 
@@ -208,10 +225,21 @@ export default function App() {
          </div>
          
          <div className="flex items-center gap-4">
+            {/* ปุ่ม Settings (เฉพาะ Admin) */}
+            {user.role === 'admin' && (
+              <button 
+                onClick={() => setShowSettingsModal(true)} 
+                className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-primary-gold transition-colors"
+                title="ตั้งค่าอีเมล"
+              >
+                <Settings size={20} />
+              </button>
+            )}
+
             <div className="relative group">
                 <div className="flex items-center gap-3 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition-all cursor-pointer border border-white/10">
                     <div className="text-right hidden md:block">
-                        <p className="text-xs text-gray-300 uppercase tracking-widest">Current Role</p>
+                        <p className="text-xs text-gray-300 uppercase tracking-widest text-left">Current Role</p>
                         <select 
                             value={user.username}
                             onChange={handleRoleSwitch}
@@ -252,16 +280,29 @@ export default function App() {
           onBack={() => { setView('dashboard'); setAutoOpenRole(null); }}
           onSaveComplete={handleSaveComplete}
           autoOpenSignRole={autoOpenRole} 
-          setGlobalLoading={setIsLoading} 
+          setGlobalLoading={setIsLoading}
+          appSettings={appSettings} // ส่ง Settings ไปให้ Form ใช้
         />
       )}
 
-      {/* Admin: Employee Management Modal */}
+      {/* Modals */}
       {showEmployeeModal && (
         <EmployeeManagementModal 
           onClose={() => setShowEmployeeModal(false)}
           currentEmployees={employees}
           onRefresh={fetchEmployees}
+          setGlobalLoading={setIsLoading}
+        />
+      )}
+
+      {showSettingsModal && (
+        <SettingsModal 
+          onClose={() => setShowSettingsModal(false)}
+          currentSettings={appSettings}
+          onSave={(newSettings) => {
+             setAppSettings(newSettings);
+             setShowSettingsModal(false);
+          }}
           setGlobalLoading={setIsLoading}
         />
       )}
@@ -273,6 +314,74 @@ export default function App() {
 // ==========================================
 // SUB COMPONENTS
 // ==========================================
+
+const SettingsModal = ({ onClose, currentSettings, onSave, setGlobalLoading }) => {
+  const [formData, setFormData] = useState({
+    email_hr: currentSettings.email_hr || '',
+    email_approver: currentSettings.email_approver || ''
+  });
+
+  const handleSave = async () => {
+    setGlobalLoading(true);
+    try {
+      await apiCall({
+        action: 'saveSettings',
+        settings: formData
+      });
+      alert('✅ บันทึกการตั้งค่าเรียบร้อย');
+      onSave(formData);
+    } catch (e) {
+      alert('❌ บันทึกไม่สำเร็จ');
+    } finally {
+      setGlobalLoading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-[70] bg-neutral-dark/60 flex items-center justify-center backdrop-blur-sm p-4 animate-in fade-in zoom-in duration-200">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-secondary-silver/50">
+        <div className="p-5 border-b border-secondary-silver bg-white flex justify-between items-center">
+           <h3 className="font-bold text-xl text-primary-navy flex items-center gap-2">
+             <Settings className="text-primary-gold" size={24}/> ตั้งค่าระบบ (Settings)
+           </h3>
+           <button onClick={onClose}><X size={24} className="text-secondary-silver hover:text-red-500"/></button>
+        </div>
+        <div className="p-6 space-y-6">
+           <div>
+              <label className="block text-sm font-bold text-primary-navy mb-2 flex items-center gap-2">
+                <Mail size={16}/> อีเมลฝ่ายบุคคล (HR Email)
+              </label>
+              <p className="text-xs text-neutral-medium mb-2">ระบบจะส่งแจ้งเตือนไปที่นี่เมื่อผู้ประเมินส่งเรื่อง</p>
+              <input 
+                type="email" 
+                value={formData.email_hr} 
+                onChange={e => setFormData({...formData, email_hr: e.target.value})}
+                className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 focus:border-primary-gold outline-none"
+                placeholder="hr@example.com"
+              />
+           </div>
+           <div>
+              <label className="block text-sm font-bold text-primary-navy mb-2 flex items-center gap-2">
+                <Mail size={16}/> อีเมลผู้อนุมัติ/CEO (Approver Email)
+              </label>
+              <p className="text-xs text-neutral-medium mb-2">ระบบจะส่งแจ้งเตือนไปที่นี่เมื่อ HR ตรวจสอบแล้ว</p>
+              <input 
+                type="email" 
+                value={formData.email_approver} 
+                onChange={e => setFormData({...formData, email_approver: e.target.value})}
+                className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 focus:border-primary-gold outline-none"
+                placeholder="ceo@example.com"
+              />
+           </div>
+        </div>
+        <div className="p-5 border-t border-secondary-silver bg-gray-50 flex justify-end gap-3">
+           <button onClick={onClose} className="px-4 py-2 text-gray-500 font-bold hover:bg-gray-200 rounded-lg">ยกเลิก</button>
+           <button onClick={handleSave} className="px-6 py-2 bg-primary-navy text-white font-bold rounded-lg hover:bg-accent-royalblue shadow-lg">บันทึก</button>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 const DashboardView = ({ evaluations, onCreate, onEdit, onDelete, onManageEmployees, currentRole }) => {
     return (
@@ -412,7 +521,7 @@ const DashboardView = ({ evaluations, onCreate, onEdit, onDelete, onManageEmploy
 };
 
 
-const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, onSaveComplete, autoOpenSignRole, setGlobalLoading }) => {
+const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, onSaveComplete, autoOpenSignRole, setGlobalLoading, appSettings }) => {
   const [status, setStatus] = useState(initialData?.status || 'draft');
   const [dbId, setDbId] = useState(initialData?.id || null);
   const [isComplete, setIsComplete] = useState(false);
@@ -574,7 +683,6 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     };
     
     try {
-      // ✅ ใช้ apiCall (POST)
       const savedData = await apiCall(payload);
       
       setDbId(savedData.id); 
@@ -604,8 +712,6 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
 
     try {
         setGlobalLoading(true);
-        
-        // ✅ ใช้ apiCall (POST)
         const savedData = await apiCall(updatedFormData);
         
         setDbId(savedData.id);
@@ -613,8 +719,8 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
         setStatus(newStatus);
         setSignatureModalOpen(false);
 
-        // Send Email
-        await sendGmailNotification(savedData.employeeName, status, newStatus, savedData.id);
+        // ✅ ส่ง Email โดยใช้ Settings
+        await sendGmailNotification(savedData.employeeName, status, newStatus, savedData.id, appSettings);
 
         if (autoOpenSignRole) {
             setIsComplete(true); 
@@ -1303,7 +1409,7 @@ const SignatureModal = ({ onSave, onClose, title }) => {
 };
 
 // --- sendGmailNotification Function ---
-const sendGmailNotification = async (employeeName, currentStatus, nextStatus, evalId) => {
+const sendGmailNotification = async (employeeName, currentStatus, nextStatus, evalId, settings) => {
   let toEmail = '';
   let subject = '';
   let messageHtml = '';
@@ -1313,20 +1419,24 @@ const sendGmailNotification = async (employeeName, currentStatus, nextStatus, ev
   // ⚠️ เปลี่ยนเป็น URL จริงของคุณเมื่อ Deploy เสร็จแล้ว
   const baseUrl = 'https://philm003.github.io/CMT-HRD-EvaluationSystem'; 
 
+  // ใช้ค่าจาก Settings ถ้าไม่มีให้ใช้ค่า Default
+  const emailHR = settings?.email_hr || 'burin.wo@gmail.com';
+  const emailApprover = settings?.email_approver || 'burin.wo@gmail.com';
+
   if (nextStatus === 'pending_hr') {
-      toEmail = 'burin.wo@gmail.com'; 
+      toEmail = emailHR; 
       subject = `[Action Required] กรุณาลงนามผลประเมินของ ${employeeName}`;
       messageHtml = `<h3>เรียน HR Manager,</h3><p>กรุณาตรวจสอบและลงนามผลการทดลองงานของ <b>${employeeName}</b></p>`;
       signRole = 'hr';
   } 
   else if (nextStatus === 'pending_approval') {
-      toEmail = 'burin.wo@gmail.com'; 
+      toEmail = emailApprover; 
       subject = `[Action Required] กรุณาอนุมัติผลประเมินของ ${employeeName}`;
       messageHtml = `<h3>เรียน CEO,</h3><p>ฝ่ายบุคคลตรวจสอบเรียบร้อยแล้ว โปรดพิจารณาอนุมัติ</p>`;
       signRole = 'approver';
   } 
   else if (nextStatus === 'completed') {
-      toEmail = 'burin.wo@gmail.com'; 
+      toEmail = emailHR; // ส่งกลับหา HR เมื่อเสร็จสิ้น
       subject = `[Completed] ผลประเมิน ${employeeName} เสร็จสมบูรณ์`;
       messageHtml = `<p>การประเมินเสร็จสิ้นแล้ว</p>`;
   }
@@ -1338,14 +1448,13 @@ const sendGmailNotification = async (employeeName, currentStatus, nextStatus, ev
   }
 
   try {
-        // ✅ ใช้ apiCall (POST)
         await apiCall({
             action: 'sendEmail', 
             to: toEmail,
             subject: subject,
             html: messageHtml 
         });
-        console.log('Email sent successfully');
+        console.log('Email sent successfully to ' + toEmail);
     } catch (error) {
       console.error('Email error:', error);
       alert('❌ ส่งอีเมลไม่สำเร็จ (แต่บันทึกข้อมูลแล้ว)');
