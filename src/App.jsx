@@ -8,7 +8,7 @@ import {
 
 // API Configuration
 // ✅ อย่าลืมเปลี่ยนเป็น URL ของ Google Apps Script ถ้า Deploy แล้ว
-const API_URL = 'https://script.google.com/macros/s/xxxxxxxxx/exec'; 
+const API_URL = 'https://script.google.com/macros/s/AKfycbwAL1ISDOIC_0TVh4RZniHn34vP0O7x5yBHlyxGZ1-u8ctgEg9OtG9dNMAZwxH7sNww/exec'; 
 
 // ==========================================
 // 🎨 ปรับแต่งโลโก้และไอคอน (LOGO CONFIG)
