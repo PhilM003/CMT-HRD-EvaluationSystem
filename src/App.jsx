@@ -383,7 +383,7 @@ const SettingsModal = ({ onClose, currentSettings, onSave, setGlobalLoading }) =
   );
 };
 
-const DashboardView = ({ evaluations, onCreate, onEdit, onDelete, onManageEmployees, currentRole }) => {
+const DashboardView = ({ evaluations = [], onCreate, onEdit, onDelete, onManageEmployees, currentRole }) => {
     return (
     <div className="max-w-7xl mx-auto p-8 animate-in fade-in duration-500">
       
@@ -838,7 +838,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
                         <span className="text-xs font-bold text-primary-navy bg-accent-sand/30 px-2.5 py-1 rounded-md">{emp.position}</span>
                      </div>
                    ))}
-                   {employeeList.length === 0 && <div className="p-4 text-center text-neutral-medium text-xs">ไม่พบข้อมูล (ต้อง Sync ก่อน)</div>}
+                   {employeeList?.length === 0 && <div className="p-4 text-center text-neutral-medium text-xs">ไม่พบข้อมูล (ต้อง Sync ก่อน)</div>}
                  </div>
                )}
              </div>
@@ -1069,7 +1069,6 @@ const EmployeeManagementModal = ({ onClose, currentEmployees, onRefresh, setGlob
     setIsLoading(true);
     
     try {
-      // ✅ เรียกผ่าน GAS Proxy แก้ CORS/Private Sheet
       const res = await apiCall({ 
         action: 'previewSheet', 
         sheetId: sheetId.trim(), 
@@ -1078,8 +1077,9 @@ const EmployeeManagementModal = ({ onClose, currentEmployees, onRefresh, setGlob
 
       if (res.error) throw new Error(res.error);
       
-      setHeaders(res.headers);
-      setRawRows(res.rows);
+      // 🛡️ FIX: เติม || [] เพื่อกันค่า undefined
+      setHeaders(res.headers || []); 
+      setRawRows(res.rows || []);
       setTab('config');
       
     } catch (error) {
