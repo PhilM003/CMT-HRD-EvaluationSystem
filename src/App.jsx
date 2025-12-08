@@ -9,8 +9,8 @@ import {
 import logoImage from './assets/enterprise.png'; 
 
 // ============================================================================
-// ⚠️ สำคัญ: ใส่ URL ของ Google Apps Script Web App ที่ Deploy ใหม่ (Version ล่าสุด)
-// ต้องลงท้ายด้วย /exec และตั้งค่า Who has access เป็น "Anyone"
+// ⚠️ CONFIGURATION
+// ใส่ URL ของ Google Apps Script Web App ที่ Deploy ล่าสุด (ลงท้ายด้วย /exec)
 // ============================================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbwAL1ISDOIC_0TVh4RZniHn34vP0O7x5yBHlyxGZ1-u8ctgEg9OtG9dNMAZwxH7sNww/exec'; 
 const LOGO_URL = logoImage;
@@ -19,6 +19,7 @@ const LOGO_URL = logoImage;
 const apiCall = async (payload) => {
   // เทคนิค: ใช้ POST ตลอดกาล และไม่ระบุ Header Content-Type
   // Browser จะส่งเป็น text/plain ทำให้ไม่ติด CORS Preflight
+  // Google Apps Script ฝั่งรับต้องเขียนรับแบบ e.postData.contents
   const response = await fetch(API_URL, {
     method: 'POST',
     body: JSON.stringify(payload)
@@ -70,7 +71,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(false);
   const [autoOpenRole, setAutoOpenRole] = useState(null);
 
-  // Mock Users
+  // Mock Users (Role Switcher)
   const availableUsers = [
     { username: 'admin', name: 'Admin User', role: 'admin' },
     { username: 'assess', name: 'Head of Dept', role: 'assessor' },
@@ -958,32 +959,30 @@ const EmployeeManagementModal = ({ onClose, currentEmployees, onRefresh, setGlob
 
   const fetchHeaders = async () => {
     if (!sheetId) return alert("Please enter Sheet ID");
+    setGlobalLoading(true);
     setIsLoading(true);
+    
     try {
-      let csvUrl = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv`;
-      if (sheetName.trim()) csvUrl += `&sheet=${encodeURIComponent(sheetName.trim())}`;
+      // ✅ เรียกผ่าน GAS Proxy แก้ CORS/Private Sheet
+      const res = await apiCall({ 
+        action: 'previewSheet', 
+        sheetId: sheetId.trim(), 
+        sheetName: sheetName.trim() 
+      });
 
-      const res = await fetch(csvUrl);
-      if(!res.ok) throw new Error("Failed to fetch");
-      const csvText = await res.text();
-      const rows = csvText.split('\n').map(row => {
-         const regex = /"([^"]*)"|([^,]+)/g;
-         const cols = [];
-         let match;
-         while ((match = regex.exec(row)) !== null) {
-             cols.push((match[1] || match[2] || "").trim());
-         }
-         return cols;
-      }).filter(r => r.length > 0);
-
-      if (rows.length === 0) throw new Error("Sheet is empty");
-
-      setHeaders(rows[0]);
-      setRawRows(rows.slice(1));
+      if (res.error) throw new Error(res.error);
+      
+      setHeaders(res.headers);
+      setRawRows(res.rows);
       setTab('config');
+      
     } catch (error) {
-      alert("ไม่สามารถดึงข้อมูลได้: ตรวจสอบ Sheet ID, ชื่อ Sheet และการแชร์ (Public)");
-    } finally { setIsLoading(false); }
+      console.error(error);
+      alert("ไม่สามารถดึงข้อมูลได้: " + error.message);
+    } finally { 
+      setIsLoading(false); 
+      setGlobalLoading(false);
+    }
   };
 
   const getPreviewData = () => {
@@ -1014,7 +1013,6 @@ const EmployeeManagementModal = ({ onClose, currentEmployees, onRefresh, setGlob
 
     try {
       for (const emp of dataToSync) {
-         // ✅ ใช้ apiCall (POST)
          await apiCall({ action: 'syncEmployees', ...emp });
       }
 
@@ -1035,7 +1033,6 @@ const EmployeeManagementModal = ({ onClose, currentEmployees, onRefresh, setGlob
     if(!confirm(`ต้องการลบข้อมูลพนักงานรหัส ${id} ใช่หรือไม่?`)) return;
     setGlobalLoading(true);
     try {
-      // ✅ ใช้ apiCall (POST)
       await apiCall({ action: 'deleteEmployee', id: id });
       await onRefresh();
     } catch (error) {
@@ -1136,6 +1133,23 @@ const EmployeeManagementModal = ({ onClose, currentEmployees, onRefresh, setGlob
                   <div className="flex-1 overflow-y-auto p-8">
                      <div className="mb-8 bg-secondary-cream/30 p-6 rounded-2xl border border-secondary-silver/50">
                         <h4 className="font-bold text-primary-navy mb-4 flex items-center gap-2 text-lg"><Settings size={20} className="text-primary-gold"/> จับคู่คอลัมน์ (Map Columns)</h4>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                           {appFields.map(field => (
+                             <div key={field.key} className="flex flex-col">
+                                <label className="text-xs font-bold text-neutral-medium mb-1">{field.label}</label>
+                                <select 
+                                  value={mapping[field.key]} 
+                                  onChange={(e)=>setMapping({...mapping, [field.key]: parseInt(e.target.value)})}
+                                  className="border rounded-lg p-2 text-sm bg-white"
+                                >
+                                   {headers.map((h, idx) => (
+                                     <option key={idx} value={idx}>{h} (Col {idx+1})</option>
+                                   ))}
+                                </select>
+                             </div>
+                           ))}
+                        </div>
                      </div>
                      <div className="bg-white border border-secondary-silver/50 rounded-xl overflow-hidden shadow-sm">
                         <div className="p-4 bg-gray-50 border-b border-secondary-silver/50 flex justify-between items-center">
@@ -1143,6 +1157,23 @@ const EmployeeManagementModal = ({ onClose, currentEmployees, onRefresh, setGlob
                            <button onClick={confirmSync} disabled={isLoading} className="bg-green-600 text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-green-700 shadow-md flex items-center gap-2 transition-all hover:-translate-y-0.5">
                               <UploadCloud size={18}/> {isLoading ? 'Importing...' : 'ยืนยันนำเข้า (Confirm)'}
                            </button>
+                        </div>
+                        <div className="overflow-x-auto">
+                           <table className="w-full text-left text-xs">
+                              <thead className="bg-gray-100 font-bold text-gray-600 border-b">
+                                 <tr>
+                                    {appFields.map(f => <th key={f.key} className="p-3">{f.label}</th>)}
+                                 </tr>
+                              </thead>
+                              <tbody>
+                                 {getPreviewData().slice(0, 5).map((row, i) => (
+                                    <tr key={i} className="border-b last:border-0 hover:bg-gray-50">
+                                       {appFields.map(f => <td key={f.key} className="p-3">{row[f.key]}</td>)}
+                                    </tr>
+                                 ))}
+                              </tbody>
+                           </table>
+                           <div className="p-2 text-center text-xs text-gray-400">แสดง 5 รายการแรกจากทั้งหมด {rawRows.length} รายการ</div>
                         </div>
                      </div>
                   </div>
@@ -1278,7 +1309,9 @@ const sendGmailNotification = async (employeeName, currentStatus, nextStatus, ev
   let messageHtml = '';
   let signRole = ''; 
 
-  const baseUrl = 'https://philm003.github.io/CMT-HRD-EvaluationSystem'; // เปลี่ยนเป็น URL ของ GitHub Pages
+  // URL ของหน้าเว็บ GitHub Pages
+  // ⚠️ เปลี่ยนเป็น URL จริงของคุณเมื่อ Deploy เสร็จแล้ว
+  const baseUrl = 'https://philm003.github.io/CMT-HRD-EvaluationSystem'; 
 
   if (nextStatus === 'pending_hr') {
       toEmail = 'burin.wo@gmail.com'; 
