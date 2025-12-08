@@ -10,6 +10,7 @@ import {
 // ✅ อย่าลืมเปลี่ยนเป็น URL ของ Google Apps Script ถ้า Deploy แล้ว
 const API_URL = 'https://script.google.com/macros/s/AKfycbwAL1ISDOIC_0TVh4RZniHn34vP0O7x5yBHlyxGZ1-u8ctgEg9OtG9dNMAZwxH7sNww/exec'; 
 
+
 // ==========================================
 // 🎨 ปรับแต่งโลโก้และไอคอน (LOGO CONFIG)
 // ==========================================
@@ -983,7 +984,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
 // 🔄 แก้ไข EmployeeManagementModal ให้รับ props setGlobalLoading
 const EmployeeManagementModal = ({ onClose, currentEmployees, onRefresh, setGlobalLoading }) => {
   // ... state ...
-  const [sheetId, setSheetId] = useState("1fBQyzSWlV-geImRwQtmc_oJxxUmdBHQECHDDv0uWTVU");
+  const [sheetId, setSheetId] = useState("13ko9sbzz9_RlBqvb02g-A6_Tc3sMq1YP7-CjlhGKB9E");
   const [sheetName, setSheetName] = useState("");
   const [headers, setHeaders] = useState([]);
   const [rawRows, setRawRows] = useState([]);

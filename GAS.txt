@@ -1,6 +1,6 @@
 // code.gs
 
-const SPREADSHEET_ID = 'ใส่_ID_ของ_GOOGLE_SHEET_ที่นี่'; // ดู ID จาก URL ของ Sheet
+const SPREADSHEET_ID = '13ko9sbzz9_RlBqvb02g-A6_Tc3sMq1YP7-CjlhGKB9E'; // ดู ID จาก URL ของ Sheet
 
 function doGet(e) {
   const action = e.parameter.action;
