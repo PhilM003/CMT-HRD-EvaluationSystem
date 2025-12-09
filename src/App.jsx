@@ -1951,7 +1951,7 @@ const htmlContent = `
                                 return `
                                     <tr>
                                         <td style="text-align: left;">
-                                            <div>${topic.id}. ${topic.t}</div>
+                                            <div style="font-size:11px; color:#000000;">${topic.id}. ${topic.t}</div>
                                             <div style="font-style:italic; font-size:10px; color:#555;">${topic.e}</div>
                                         </td>
                                         <td class="text-center">${topic.w}</td>
@@ -1963,7 +1963,7 @@ const htmlContent = `
                         </tbody>
                         <tfoot>
                             <tr style="background:#f9f9f9;">
-                                <td class="text-right font-bold">คะแนนเต็ม (Full marks)</td>
+                                <td class="text-right font-bold" style="text-align: center;">คะแนนเต็ม (Full marks)</td>
                                 <td class="text-center font-bold">100</td>
                                 <td colspan="7"></td>
                                 <td class="text-center font-bold" style="font-size:14px;">${totalScore ? totalScore.toFixed(2) : ''}</td>

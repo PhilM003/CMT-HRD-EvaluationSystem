@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+   <!DOCTYPE html>
     <html lang="th">
     <head>
         <meta charset="UTF-8">
@@ -175,8 +175,8 @@
                             <tr>
                                 <th rowspan="2" style="width:52%; text-align:center;">หัวข้อในการประเมิน<br><span style="font-weight:normal; font-style:italic;">(Evaluate Topic)</span></th>
                                 <th rowspan="2" class="diagonal-cell" style="font-size: 4px; width: 6%">
-                                    <div class="diag-top">คะแนน<br>Score</div>
-                                    <div class="diag-bottom">น้ำหนัก<br>Weight</div>
+                                    <div class="diag-top" style="font-size: 6px;">คะแนน<br>Score</div>
+                                    <div class="diag-bottom" style="font-size: 6px;">น้ำหนัก<br>Weight</div>
                                 </th>
                                 <th style="font-size: 8px; width: 6%">ใช้ไม่ได้<br>(Bad)<br>1</th>
                                 <th style="font-size: 8px; width: 6%">ต้องปรับปรุง<br>(Poor)<br>2</th>
@@ -210,7 +210,7 @@
                                 return `
                                     <tr>
                                         <td style="text-align: left;">
-                                            <div>${topic.id}. ${topic.t}</div>
+                                            <div style="font-size:11px; color:#000000;">${topic.id}. ${topic.t}</div>
                                             <div style="font-style:italic; font-size:10px; color:#555;">${topic.e}</div>
                                         </td>
                                         <td class="text-center">${topic.w}</td>
@@ -222,7 +222,7 @@
                         </tbody>
                         <tfoot>
                             <tr style="background:#f9f9f9;">
-                                <td class="text-right font-bold">คะแนนเต็ม (Full marks)</td>
+                                <td class="text-right font-bold" style="text-align: center;">คะแนนเต็ม (Full marks)</td>
                                 <td class="text-center font-bold">100</td>
                                 <td colspan="7"></td>
                                 <td class="text-center font-bold" style="font-size:14px;">${totalScore ? totalScore.toFixed(2) : ''}</td>
