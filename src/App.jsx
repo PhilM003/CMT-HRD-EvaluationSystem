@@ -647,6 +647,18 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     }
   };
 
+  const handleNestedChange = (category, field, value) => {
+    if (isReadOnly('general')) return; // ป้องกันการแก้ไขถ้าอยู่ในโหมด Read Only
+
+    setFormData(prev => ({
+        ...prev,
+        [category]: {
+            ...prev[category],
+            [field]: value
+        }
+    }));
+  };
+
   const handleRatingChange = (topicId, score) => {
     if (!canEdit('general')) return;
     setFormData(prev => ({ ...prev, ratings: { ...prev.ratings, [topicId]: score } }));
@@ -891,6 +903,149 @@ return (
              <InputField label="แผนก (Department)" value={formData.department} disabled/>
              <InputField type="text" label="วันเริ่มงาน (Start Date)" name="startDate" value={formData.startDate} onChange={handleInputChange} disabled={!isEmployeeInfoEditable()} placeholder="DD/MM/YYYY"/>
              <InputField type="text" label="ครบกำหนด (Due Date)" name="dueProbationDate" value={formData.dueProbationDate} onChange={handleInputChange} disabled={!isEmployeeInfoEditable()} placeholder="DD/MM/YYYY"/>
+             <div className="col-span-1 md:col-span-2 mt-4 pt-6 border-t border-secondary-silver/30">
+                <h4 className="font-bold text-lg text-primary-navy mb-4 flex items-center">
+                    <span className="w-1.5 h-6 bg-primary-gold rounded-full mr-2"></span>
+                    ข้อมูลสถิติการทำงาน (Time Attendance)
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {/* 1. ลาป่วย (Sick Leave) */}
+                    <div>
+                        <label className="text-xs text-neutral-medium font-bold mb-2 block uppercase tracking-wider">ลาป่วย (Sick Leave)</label>
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <input 
+                                    type="number" 
+                                    placeholder="0"
+                                    value={formData.sickLeave?.days || ''}
+                                    onChange={(e) => handleNestedChange('sickLeave', 'days', e.target.value)}
+                                    className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pr-8 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none text-center font-medium"
+                                />
+                                <span className="absolute right-3 top-3.5 text-xs text-neutral-medium">วัน</span>
+                            </div>
+                            <div className="relative flex-1">
+                                <input 
+                                    type="number" 
+                                    placeholder="0"
+                                    value={formData.sickLeave?.hours || ''}
+                                    onChange={(e) => handleNestedChange('sickLeave', 'hours', e.target.value)}
+                                    className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pr-8 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none text-center font-medium"
+                                />
+                                <span className="absolute right-3 top-3.5 text-xs text-neutral-medium">ชม.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 2. ลากิจ (Personal Leave) */}
+                    <div>
+                        <label className="text-xs text-neutral-medium font-bold mb-2 block uppercase tracking-wider">ลากิจ (Personal Leave)</label>
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <input 
+                                    type="number" 
+                                    placeholder="0"
+                                    value={formData.personalLeave?.days || ''}
+                                    onChange={(e) => handleNestedChange('personalLeave', 'days', e.target.value)}
+                                    className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pr-8 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none text-center font-medium"
+                                />
+                                <span className="absolute right-3 top-3.5 text-xs text-neutral-medium">วัน</span>
+                            </div>
+                            <div className="relative flex-1">
+                                <input 
+                                    type="number" 
+                                    placeholder="0"
+                                    value={formData.personalLeave?.hours || ''}
+                                    onChange={(e) => handleNestedChange('personalLeave', 'hours', e.target.value)}
+                                    className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pr-8 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none text-center font-medium"
+                                />
+                                <span className="absolute right-3 top-3.5 text-xs text-neutral-medium">ชม.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 3. ลาอื่นๆ (Other Leave) */}
+                    <div>
+                        <label className="text-xs text-neutral-medium font-bold mb-2 block uppercase tracking-wider">ลาอื่นๆ (Other Leave)</label>
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <input 
+                                    type="number" 
+                                    placeholder="0"
+                                    value={formData.otherLeave?.days || ''}
+                                    onChange={(e) => handleNestedChange('otherLeave', 'days', e.target.value)}
+                                    className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pr-8 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none text-center font-medium"
+                                />
+                                <span className="absolute right-3 top-3.5 text-xs text-neutral-medium">วัน</span>
+                            </div>
+                            <div className="relative flex-1">
+                                <input 
+                                    type="number" 
+                                    placeholder="0"
+                                    value={formData.otherLeave?.hours || ''}
+                                    onChange={(e) => handleNestedChange('otherLeave', 'hours', e.target.value)}
+                                    className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pr-8 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none text-center font-medium"
+                                />
+                                <span className="absolute right-3 top-3.5 text-xs text-neutral-medium">ชม.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 4. มาสาย (Late) - เพิ่มใหม่ตามที่ขอ */}
+                    <div>
+                        <label className="text-xs text-red-500 font-bold mb-2 block uppercase tracking-wider">มาสาย (Late)</label>
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <input 
+                                    type="number" 
+                                    placeholder="0"
+                                    value={formData.late?.times || ''}
+                                    onChange={(e) => handleNestedChange('late', 'times', e.target.value)}
+                                    className="w-full border-2 border-red-200 bg-red-50/30 rounded-xl p-3 pr-10 focus:ring-4 focus:ring-red-100 focus:border-red-400 outline-none text-center font-medium text-red-600"
+                                />
+                                <span className="absolute right-3 top-3.5 text-xs text-red-400">ครั้ง</span>
+                            </div>
+                            <div className="relative flex-1">
+                                <input 
+                                    type="number" 
+                                    placeholder="0"
+                                    value={formData.late?.mins || ''}
+                                    onChange={(e) => handleNestedChange('late', 'mins', e.target.value)}
+                                    className="w-full border-2 border-red-200 bg-red-50/30 rounded-xl p-3 pr-10 focus:ring-4 focus:ring-red-100 focus:border-red-400 outline-none text-center font-medium text-red-600"
+                                />
+                                <span className="absolute right-3 top-3.5 text-xs text-red-400">นาที</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 5. ขาดงาน (Absence) - เพิ่มใหม่ตามที่ขอ */}
+                    <div>
+                        <label className="text-xs text-red-500 font-bold mb-2 block uppercase tracking-wider">ขาดงาน (Absence)</label>
+                        <div className="flex gap-2">
+                            <div className="relative flex-1">
+                                <input 
+                                    type="number" 
+                                    placeholder="0"
+                                    value={formData.absence?.days || ''}
+                                    onChange={(e) => handleNestedChange('absence', 'days', e.target.value)}
+                                    className="w-full border-2 border-red-200 bg-red-50/30 rounded-xl p-3 pr-8 focus:ring-4 focus:ring-red-100 focus:border-red-400 outline-none text-center font-medium text-red-600"
+                                />
+                                <span className="absolute right-3 top-3.5 text-xs text-red-400">วัน</span>
+                            </div>
+                            <div className="relative flex-1">
+                                <input 
+                                    type="number" 
+                                    placeholder="0"
+                                    value={formData.absence?.hours || ''}
+                                    onChange={(e) => handleNestedChange('absence', 'hours', e.target.value)}
+                                    className="w-full border-2 border-red-200 bg-red-50/30 rounded-xl p-3 pr-8 focus:ring-4 focus:ring-red-100 focus:border-red-400 outline-none text-center font-medium text-red-600"
+                                />
+                                <span className="absolute right-3 top-3.5 text-xs text-red-400">ชม.</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+              </div>
           </div>
           {isReadOnly('general') && <LockOverlay/>}
       </div>
