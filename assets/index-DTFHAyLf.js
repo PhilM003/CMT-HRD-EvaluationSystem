@@ -202,7 +202,7 @@ Error generating stack: `+e.message+`
                             ${[{id:1,w:15,t:`ปริมาณงานที่ทำสำเร็จจากที่ได้มอบหมาย`,e:`(The amount of work accomplished from the assignment)`},{id:2,w:15,t:`คุณภาพของงานที่ทำสำเร็จ`,e:`(The quality of the complete work)`},{id:3,w:15,t:`การปฏิบัติตามคำสั่งของผู้บังคับบัญชาหรือตาม WI หรือ WP`,e:`(Compliance with orders of supervisors or according to WI or WP)`},{id:4,w:10,t:`ความสามารถการเรียนรู้งานและความเข้าใจในงานที่ทำ`,e:`(Ability to learn and understand the work)`},{id:5,w:10,t:`ความไว้วางใจและความรับผิดชอบในงานที่ได้รับมอบหมาย`,e:`(Trust and responsibility in assigned work)`},{id:6,w:10,t:`ความร่วมมือในการทำงานเป็นทีม`,e:`(Cooperation in Teamwork)`},{id:7,w:10,t:`การตรงต่อเวลาและความสม่ำเสมอในการมาทำงาน`,e:`(Punctuality in working, quitting work and Consistency in working)`},{id:8,w:5,t:`การเอาใจใส่ในการปฏิบัติตามกฎเรื่องความปลอดภัยและชีวอนามัยของบริษัทฯ`,e:`(Caring for compliance the safety and health regulations of the company)`},{id:9,w:5,t:`ความชื่อสัตย์ และทัศนคติที่ดีต่อบริษัท`,e:`(Honesty and good attitude towards the company)`},{id:10,w:5,t:`การปฏิบัติตามกฎระเบียบและการรักษาทรัพย์สินของบริษัท`,e:`(Compliance with rules and regulations for maintaining company assets)`}].map(t=>{let n=e.ratings[t.id],r=n?(t.w/7*n).toFixed(2):``,i=``;for(let e=1;e<=7;e++)i+=`<td class="text-center"><div class="rating-circle ${n==e?`selected`:``}">${e}</div></td>`;return`
                                     <tr>
                                         <td style="text-align: left;">
-                                            <div>${t.id}. ${t.t}</div>
+                                            <div style="font-size:11px; color:#000000;">${t.id}. ${t.t}</div>
                                             <div style="font-style:italic; font-size:10px; color:#555;">${t.e}</div>
                                         </td>
                                         <td class="text-center">${t.w}</td>
@@ -213,7 +213,7 @@ Error generating stack: `+e.message+`
                         </tbody>
                         <tfoot>
                             <tr style="background:#f9f9f9;">
-                                <td class="text-right font-bold">คะแนนเต็ม (Full marks)</td>
+                                <td class="text-right font-bold" style="text-align: center;">คะแนนเต็ม (Full marks)</td>
                                 <td class="text-center font-bold">100</td>
                                 <td colspan="7"></td>
                                 <td class="text-center font-bold" style="font-size:14px;">${t?t.toFixed(2):``}</td>
