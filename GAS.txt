@@ -8,7 +8,7 @@ function doGet(e) {
   if (action === 'getEvaluations') {
     return readData('Evaluations');
   } else if (action === 'getEmployees') {
-    return readData('Employees');
+    return readData('EvaluateEmployees');
   } else if (action === 'getUsers') {
     return readData('Users');
   } else if (action === 'getEvaluationById') {
@@ -34,7 +34,7 @@ function doPost(e) {
     // สำหรับตอนนี้ใช้แบบเดิมที่ Frontend ส่งมา save ทีละคน หรือส่งมาเป็น array ก็ได้
     return saveEmployee(data); 
   } else if (action === 'deleteEmployee') {
-    return deleteRow('Employees', data.id);
+    return deleteRow('EvaluateEmployees', data.id);
   } else if (action === 'sendEmail') {
     return sendEmail(data);
   }

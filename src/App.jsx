@@ -3,7 +3,7 @@ import {
   User, Calendar, ClipboardList, CheckCircle, Calculator, PenTool, Search, 
   Save, Trash2, Database, LayoutDashboard, FileSpreadsheet, Plus, 
   ArrowLeft, Users, FileText, ChevronRight, AlertCircle, RotateCcw, X, Eye, UploadCloud, Settings, TableProperties,
-  LogOut, Lock, Key, Printer, ChevronDown, Loader2, Mail
+  LogOut, Lock, Key, Printer, ChevronDown, Loader2, Mail, Briefcase
 } from 'lucide-react';
 
 import logoImage from './assets/enterprise.png'; 
@@ -71,26 +71,29 @@ const GlobalLoading = () => (
 // ==========================================
 export default function App() {
   // Global State
-  const [user, setUser] = useState({ username: 'admin', name: 'Admin User', role: 'admin' }); 
+  const [user, setUser] = useState({ 
+    username: 'admin', 
+    name: 'Assess Admin',  // เปลี่ยนชื่อตามต้องการ
+    role: 'admin'          // ใช้ role 'admin' เพื่อให้เข้าถึง Settings/Dashboard ได้
+  }); 
+  
   const [view, setView] = useState('dashboard'); 
   const [showEmployeeModal, setShowEmployeeModal] = useState(false); 
-  const [showSettingsModal, setShowSettingsModal] = useState(false); // Modal ตั้งค่า
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
   
   // Data State
   const [evaluations, setEvaluations] = useState([]);
   const [employees, setEmployees] = useState([]); 
-  const [appSettings, setAppSettings] = useState({ email_hr: '', email_approver: '' }); // เก็บค่า Email
+  // เก็บค่า Settings (เพิ่ม Title เข้ามา)
+  const [appSettings, setAppSettings] = useState({ 
+    email_hr: '', 
+    role_hr_title: 'ฝ่ายบุคคล (HR)', // Default value
+    email_approver: '',
+    role_approver_title: 'ผู้อนุมัติ (Approver)' // Default value
+  }); 
   const [selectedEval, setSelectedEval] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [autoOpenRole, setAutoOpenRole] = useState(null);
-
-  // Mock Users
-  const availableUsers = [
-    { username: 'admin', name: 'Admin User', role: 'admin' },
-    { username: 'assess', name: 'Head of Dept', role: 'assessor' },
-    { username: 'hr', name: 'HR Manager', role: 'hr' },
-    { username: 'ceo', name: 'CEO', role: 'approver' }
-  ];
 
   // --- Initial Load ---
   useEffect(() => {
@@ -122,8 +125,12 @@ export default function App() {
   const handleMagicLinkAccess = async (id, role) => {
       setIsLoading(true);
       try {
-          const guestUser = { name: `${role.toUpperCase()} (Guest Access)`, role: role, username: 'guest' };
-          setUser(guestUser);
+          const guestUser = { 
+            name: `${role.toUpperCase()} (Guest Access)`, 
+            role: role, 
+            username: 'guest' 
+          };
+          setUser(guestUser); // Set เป็น Guest
           const data = await apiCall({ action: 'getEvaluationById', id: id });
           if (!data || data.message === "Not found") throw new Error("Form not found");
           setSelectedEval(data);
@@ -161,22 +168,11 @@ export default function App() {
       const data = await apiCall({ action: 'getSettings' });
       setAppSettings({
         email_hr: data.email_hr || '',
-        email_approver: data.email_approver || ''
+        role_hr_title: data.role_hr_title || 'ฝ่ายบุคคล (HR)',
+        email_approver: data.email_approver || '',
+        role_approver_title: data.role_approver_title || 'ผู้อนุมัติ (Approver)'
       });
     } catch (error) { console.error("Settings Error:", error); }
-  };
-
-  const handleRoleSwitch = (e) => {
-      const selectedUsername = e.target.value;
-      const newUser = availableUsers.find(u => u.username === selectedUsername);
-      if (newUser) {
-          setIsLoading(true);
-          setTimeout(() => {
-            setUser(newUser);
-            setView('dashboard');
-            setIsLoading(false);
-          }, 500);
-      }
   };
 
   const handleCreateNew = () => { setSelectedEval(null); setView('form'); setAutoOpenRole(null); };
@@ -225,38 +221,24 @@ export default function App() {
          </div>
          
          <div className="flex items-center gap-4">
-            {/* ปุ่ม Settings (เฉพาะ Admin) */}
-            {user.role === 'admin' && (
+          {/* ปุ่ม Settings (แสดงเฉพาะ Admin/Assess) */}
+            {(user.role === 'admin' || user.role === 'assess') && (
               <button 
                 onClick={() => setShowSettingsModal(true)} 
                 className="p-2 bg-white/10 hover:bg-white/20 rounded-lg text-primary-gold transition-colors"
-                title="ตั้งค่าอีเมล"
+                title="ตั้งค่าระบบ"
               >
                 <Settings size={20} />
               </button>
             )}
 
-            <div className="relative group">
-                <div className="flex items-center gap-3 bg-white/10 hover:bg-white/20 px-4 py-2 rounded-xl transition-all cursor-pointer border border-white/10">
-                    <div className="text-right hidden md:block">
-                        <p className="text-xs text-gray-300 uppercase tracking-widest text-left">Current Role</p>
-                        <select 
-                            value={user.username}
-                            onChange={handleRoleSwitch}
-                            className="bg-transparent font-bold text-primary-gold outline-none cursor-pointer appearance-none pr-4"
-                            style={{ backgroundImage: 'none' }}
-                        >
-                            {availableUsers.map(u => (
-                                <option key={u.username} value={u.username} className="text-primary-navy bg-white">
-                                    {u.name} ({u.role})
-                                </option>
-                            ))}
-                        </select>
-                    </div>
-                    <div className="h-8 w-8 bg-primary-gold rounded-full flex items-center justify-center text-primary-navy font-bold shadow-inner">
-                        {user.username.charAt(0).toUpperCase()}
-                    </div>
-                    <ChevronDown size={16} className="text-gray-400"/>
+            <div className="flex items-center gap-3 bg-white/10 px-4 py-2 rounded-xl border border-white/10">
+                <div className="text-right hidden md:block">
+                    <p className="text-xs text-gray-300 uppercase tracking-widest">User Role</p>
+                    <p className="font-bold text-primary-gold">{user.name}</p>
+                </div>
+                <div className="h-8 w-8 bg-primary-gold rounded-full flex items-center justify-center text-primary-navy font-bold shadow-inner">
+                    {user.role.charAt(0).toUpperCase()}
                 </div>
             </div>
          </div>
@@ -317,7 +299,9 @@ export default function App() {
 
 const SettingsModal = ({ onClose, currentSettings, onSave, setGlobalLoading }) => {
   const [formData, setFormData] = useState({
+    role_hr_title: currentSettings.role_hr_title || 'ฝ่ายบุคคล (HR)',
     email_hr: currentSettings.email_hr || '',
+    role_approver_title: currentSettings.role_approver_title || 'ผู้อนุมัติ (Approver)',
     email_approver: currentSettings.email_approver || ''
   });
 
@@ -328,7 +312,7 @@ const SettingsModal = ({ onClose, currentSettings, onSave, setGlobalLoading }) =
         action: 'saveSettings',
         settings: formData
       });
-      alert('✅ บันทึกการตั้งค่าเรียบร้อย');
+      alert('✅ บันทึกการตั้งค่าเรียบร้อย\n(หมายเหตุ: หากชื่อตำแหน่งไม่เปลี่ยน กรุณาตรวจสอบโค้ด Backend)');
       onSave(formData);
     } catch (e) {
       alert('❌ บันทึกไม่สำเร็จ');
@@ -339,44 +323,81 @@ const SettingsModal = ({ onClose, currentSettings, onSave, setGlobalLoading }) =
 
   return (
     <div className="fixed inset-0 z-[70] bg-neutral-dark/60 flex items-center justify-center backdrop-blur-sm p-4 animate-in fade-in zoom-in duration-200">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden border border-secondary-silver/50">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden border border-secondary-silver/50">
         <div className="p-5 border-b border-secondary-silver bg-white flex justify-between items-center">
            <h3 className="font-bold text-xl text-primary-navy flex items-center gap-2">
-             <Settings className="text-primary-gold" size={24}/> ตั้งค่าระบบ (Settings)
+             <Settings className="text-primary-gold" size={24}/> ตั้งค่าระบบ (Configuration)
            </h3>
            <button onClick={onClose}><X size={24} className="text-secondary-silver hover:text-red-500"/></button>
         </div>
-        <div className="p-6 space-y-6">
-           <div>
-              <label className="block text-sm font-bold text-primary-navy mb-2 flex items-center gap-2">
-                <Mail size={16}/> อีเมลฝ่ายบุคคล (HR Email)
-              </label>
-              <p className="text-xs text-neutral-medium mb-2">ระบบจะส่งแจ้งเตือนไปที่นี่เมื่อผู้ประเมินส่งเรื่อง</p>
-              <input 
-                type="email" 
-                value={formData.email_hr} 
-                onChange={e => setFormData({...formData, email_hr: e.target.value})}
-                className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 focus:border-primary-gold outline-none"
-                placeholder="hr@example.com"
-              />
+        
+        <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+           {/* ส่วนที่ 1: HR */}
+           <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
+             <h4 className="font-bold text-primary-navy mb-3 flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-primary-navy text-white flex items-center justify-center text-xs">1</div>
+                ตั้งค่าผู้ตรวจสอบ (Reviewer/HR)
+             </h4>
+             <div className="space-y-4 pl-8">
+               <div>
+                  <label className="block text-xs font-bold text-neutral-medium mb-1">ชื่อตำแหน่ง (Position Title)</label>
+                  <input 
+                    type="text" 
+                    value={formData.role_hr_title} 
+                    onChange={e => setFormData({...formData, role_hr_title: e.target.value})}
+                    className="w-full border border-secondary-silver rounded-lg p-2.5 text-sm focus:border-primary-gold outline-none"
+                    placeholder="เช่น HR Manager, ฝ่ายบุคคล"
+                  />
+               </div>
+               <div>
+                  <label className="block text-xs font-bold text-neutral-medium mb-1">อีเมลแจ้งเตือน (Email Notification)</label>
+                  <input 
+                    type="email" 
+                    value={formData.email_hr} 
+                    onChange={e => setFormData({...formData, email_hr: e.target.value})}
+                    className="w-full border border-secondary-silver rounded-lg p-2.5 text-sm focus:border-primary-gold outline-none"
+                    placeholder="hr@example.com"
+                  />
+               </div>
+             </div>
            </div>
-           <div>
-              <label className="block text-sm font-bold text-primary-navy mb-2 flex items-center gap-2">
-                <Mail size={16}/> อีเมลผู้อนุมัติ/CEO (Approver Email)
-              </label>
-              <p className="text-xs text-neutral-medium mb-2">ระบบจะส่งแจ้งเตือนไปที่นี่เมื่อ HR ตรวจสอบแล้ว</p>
-              <input 
-                type="email" 
-                value={formData.email_approver} 
-                onChange={e => setFormData({...formData, email_approver: e.target.value})}
-                className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 focus:border-primary-gold outline-none"
-                placeholder="ceo@example.com"
-              />
+
+           {/* ส่วนที่ 2: Approver */}
+           <div className="bg-yellow-50/50 p-4 rounded-xl border border-yellow-100">
+             <h4 className="font-bold text-primary-navy mb-3 flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-secondary-darkgold text-white flex items-center justify-center text-xs">2</div>
+                ตั้งค่าผู้อนุมัติ (Approver)
+             </h4>
+             <div className="space-y-4 pl-8">
+               <div>
+                  <label className="block text-xs font-bold text-neutral-medium mb-1">ชื่อตำแหน่ง (Position Title)</label>
+                  <input 
+                    type="text" 
+                    value={formData.role_approver_title} 
+                    onChange={e => setFormData({...formData, role_approver_title: e.target.value})}
+                    className="w-full border border-secondary-silver rounded-lg p-2.5 text-sm focus:border-primary-gold outline-none"
+                    placeholder="เช่น CEO, Director, ผู้อนุมัติ"
+                  />
+               </div>
+               <div>
+                  <label className="block text-xs font-bold text-neutral-medium mb-1">อีเมลแจ้งเตือน (Email Notification)</label>
+                  <input 
+                    type="email" 
+                    value={formData.email_approver} 
+                    onChange={e => setFormData({...formData, email_approver: e.target.value})}
+                    className="w-full border border-secondary-silver rounded-lg p-2.5 text-sm focus:border-primary-gold outline-none"
+                    placeholder="ceo@example.com"
+                  />
+               </div>
+             </div>
            </div>
         </div>
+
         <div className="p-5 border-t border-secondary-silver bg-gray-50 flex justify-end gap-3">
            <button onClick={onClose} className="px-4 py-2 text-gray-500 font-bold hover:bg-gray-200 rounded-lg">ยกเลิก</button>
-           <button onClick={handleSave} className="px-6 py-2 bg-primary-navy text-white font-bold rounded-lg hover:bg-accent-royalblue shadow-lg">บันทึก</button>
+           <button onClick={handleSave} className="px-6 py-2 bg-primary-navy text-white font-bold rounded-lg hover:bg-accent-royalblue shadow-lg flex items-center gap-2">
+              <Save size={18} /> บันทึกการตั้งค่า
+           </button>
         </div>
       </div>
     </div>
@@ -525,6 +546,12 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
   const [status, setStatus] = useState(initialData?.status || 'draft');
   const [dbId, setDbId] = useState(initialData?.id || null);
   const [isComplete, setIsComplete] = useState(false);
+  const isAdmin = currentRole === 'admin';
+  const canEdit = (targetRole) => {
+      if (status === 'completed' || status === 'rejected') return false;
+      if (isAdmin && targetRole === 'assessor') return true;
+      return currentRole === targetRole;
+    };
   
   const initialFormData = {
     employeeName: '', employeeId: '', position: '', section: '', department: '', startDate: '', dueProbationDate: '',
@@ -640,19 +667,6 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     setFormData(prev => ({ ...prev, hrOpinion: e.target.value }));
   };
 
-  const canEdit = (section) => {
-    if (currentRole === 'hr' && section === 'hr') return true;
-    if (currentRole === 'approver' && section === 'approver') return true;
-    if (currentRole === 'admin') {
-       if (section === 'general') return status === 'draft' || !initialData;
-       return false; 
-    }
-    if (section === 'general') return (currentRole === 'assessor' && status === 'draft') || (!initialData && currentRole === 'assessor');
-    if (section === 'hr') return currentRole === 'hr';
-    if (section === 'approver') return currentRole === 'approver';
-    return false;
-  };
-
   const isReadOnly = (section) => !canEdit(section);
   const isEmployeeInfoEditable = () => currentRole === 'admin';
 
@@ -663,6 +677,11 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
   };
   
   const openSignaturePad = (target) => {
+    if (target === 'assessor' && isAdmin) {
+        setSignTarget(target);
+        setSignatureModalOpen(true);
+        return;
+    }
     if (currentRole !== target) return alert("⛔ คุณไม่มีสิทธิ์เซ็นช่องนี้");
     if (target === 'hr' && status === 'draft') return alert("⚠️ ต้องให้ผู้ประเมินส่งเรื่องมาก่อน");
     if (target === 'approver' && status !== 'pending_approval') return alert("⚠️ ต้องผ่านการตรวจสอบจาก HR ก่อน");
@@ -719,7 +738,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
         setStatus(newStatus);
         setSignatureModalOpen(false);
 
-        // ✅ ส่ง Email โดยใช้ Settings
+        // ✅ ส่ง Email โดยใช้ Settings และ Title ใหม่
         await sendGmailNotification(savedData.employeeName, status, newStatus, savedData.id, appSettings);
 
         if (autoOpenSignRole) {
@@ -738,62 +757,87 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
 
   if (isComplete) {
     return (
-      <div className="flex flex-col h-screen items-center justify-center bg-green-50 p-4 animate-in fade-in zoom-in duration-300">
-         <div className="bg-white p-10 rounded-3xl shadow-xl text-center border-2 border-green-100 max-w-md w-full relative overflow-hidden">
-            <div className="absolute top-0 left-0 w-full h-2 bg-green-500"></div>
-            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner">
-                <CheckCircle size={48} className="text-green-600 drop-shadow-sm" />
-            </div>
-            
-            <h1 className="text-2xl font-extrabold text-green-800 mb-2">ได้รับการรับรองจากท่านแล้ว</h1>
-            <p className="text-gray-500 mb-8 leading-relaxed">
-                ขอบคุณสำหรับการลงนามในเอกสาร<br/>
-                ระบบได้บันทึกข้อมูลและส่งต่อให้ผู้เกี่ยวข้องแล้ว
-            </p>
-            
+      <div className="flex justify-between items-center mb-6 print:hidden">
+        
+        {/* ✅ ปุ่มย้อนกลับ หรือ แสดงสถานะ (ตาม Role) */}
+        {isAdmin ? (
             <button 
-              onClick={() => {
-                  window.open('','_parent',''); 
-                  window.close();
-                  onBack();
-              }} 
-              className="w-full py-3.5 bg-gray-800 text-white rounded-xl font-bold hover:bg-gray-900 transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 flex items-center justify-center gap-2"
+                onClick={onBack} 
+                className="flex items-center text-neutral-medium hover:text-primary-navy transition-colors font-bold px-3 py-2 rounded-lg hover:bg-secondary-cream/50"
             >
-                <X size={18} /> ปิดหน้านี้ (Close)
+                <ArrowLeft className="mr-2" size={20}/> กลับหน้า Dashboard
             </button>
+        ) : (
+            <div className="flex items-center gap-2 text-neutral-medium font-bold px-3 py-2">
+                <User size={20}/> มุมมองผู้ตรวจสอบ ({currentRole.toUpperCase()})
+            </div>
+        )}
+
+        {/* ✅ กลุ่มปุ่มขวา: Status Badge + Print + Save + Reset */}
+        <div className="flex items-center gap-3">
+            <StatusBadge status={status} size="lg" />
             
-            <p className="text-[11px] text-gray-400 mt-5 bg-gray-50 p-2 rounded-lg">
-              *หากหน้าต่างไม่ปิดอัตโนมัติ กรุณากดปิดที่ Browser ของท่าน
-            </p>
-         </div>
+            {/* ปุ่ม Print */}
+            <button onClick={() => handlePrint(formData, totalScore, avgScore, appSettings)} className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-gray-700 transition-all">
+                <Printer size={18}/> พิมพ์
+            </button>
+
+            {/* ✅ [เพิ่ม] ปุ่ม Save: แสดงเฉพาะ Admin หรือคนที่ถึงคิวแก้ไข */}
+            {(isAdmin || canEdit(currentRole)) && (
+                <button 
+                    onClick={() => handleSaveToDB()} 
+                    className="flex items-center gap-2 bg-secondary-darkgold text-white px-4 py-2 rounded-lg font-bold shadow-md hover:bg-yellow-600 transition-all"
+                >
+                    <Save size={18}/> บันทึก
+                </button>
+            )}
+
+            {/* ปุ่ม Reset Status (เฉพาะ Admin) */}
+            {(status !== 'draft' && isAdmin) && (
+                <button onClick={handleResetStatus} className="flex items-center gap-2 bg-white text-red-600 border border-red-200 hover:bg-red-50 px-4 py-2 rounded-lg font-bold shadow-sm transition-all" title="Reset กลับไปเป็น Draft">
+                    <RotateCcw size={18}/> Reset
+                </button>
+            )}
+        </div>
       </div>
     );
   }
 
   // Render Form
-  return (
-    <div className="max-w-5xl mx-auto p-6 space-y-8 bg-neutral-white shadow-2xl min-h-screen relative animate-in slide-in-from-right duration-300">
-      {/* Sticky Header */}
-      <div className="flex flex-col md:flex-row items-center justify-between border-b-2 border-primary-navy/10 pb-4 sticky top-0 bg-neutral-white/95 backdrop-blur z-20 pt-2 gap-4">
-         <button onClick={onBack} className="flex items-center text-neutral-medium hover:text-primary-navy transition-colors font-bold px-3 py-2 rounded-lg hover:bg-secondary-cream/50">
-            <ArrowLeft className="mr-2" size={20}/> กลับหน้า Dashboard
-         </button>
-         <div className="flex items-center gap-3">
-            <StatusBadge status={status} size="lg" />
+return (
+    <div className="max-w-5xl mx-auto p-4 md:p-8 animate-in slide-in-from-bottom-4 duration-500">
+      
+      {/* Header Controls */}
+      <div className="flex justify-between items-center mb-6 print:hidden">
+        
+        {/* ✅ 5. ซ่อนปุ่ม "กลับหน้า Dashboard" ถ้าไม่ใช่ Admin */}
+        {isAdmin ? (
             <button 
-                onClick={() => handlePrint(formData, totalScore, avgScore)} 
-                className="flex items-center gap-2 bg-secondary-darkgold text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-yellow-600 transition-all">
+                onClick={onBack} 
+                className="flex items-center text-neutral-medium hover:text-primary-navy transition-colors font-bold px-3 py-2 rounded-lg hover:bg-secondary-cream/50"
+            >
+                <ArrowLeft className="mr-2" size={20}/> กลับหน้า Dashboard
+            </button>
+        ) : (
+            <div className="flex items-center gap-2 text-neutral-medium font-bold px-3 py-2">
+                <User size={20}/> มุมมองผู้ตรวจสอบ ({currentRole.toUpperCase()})
+            </div>
+        )}
+
+        <div className="flex items-center gap-3">
+            <StatusBadge status={status} size="lg" />
+            
+            <button onClick={() => handlePrint(formData, totalScore, avgScore, appSettings)} className="flex items-center gap-2 bg-secondary-darkgold text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-yellow-600 transition-all">
                 <Printer size={18}/> พิมพ์ (Print)
             </button>
-            {(status !== 'draft' && (currentRole === 'admin' || currentRole === 'assessor')) && (
-               <button onClick={handleResetStatus} className="flex items-center gap-2 bg-white text-secondary-darkgold border border-secondary-darkgold hover:bg-secondary-cream px-4 py-2 rounded-lg font-bold shadow-sm transition-all">
-                  <RotateCcw size={18}/> Reset Draft
-               </button>
+
+            {/* ปุ่ม Reset Status (เฉพาะ Admin) */}
+            {(status !== 'draft' && isAdmin) && (
+                <button onClick={handleResetStatus} className="flex items-center gap-2 bg-white text-secondary-darkgold border border-secondary-darkgold hover:bg-secondary-cream px-4 py-2 rounded-lg font-bold shadow-sm transition-all">
+                    <RotateCcw size={18}/> Reset Status
+                </button>
             )}
-            <button onClick={saveToDB} className="flex items-center gap-2 bg-primary-navy text-white px-6 py-2 rounded-lg font-bold shadow-lg transition-all hover:scale-105 active:scale-95 border-none">
-               <Save size={18}/> บันทึก (Save)
-            </button>
-         </div>
+        </div>
       </div>
 
       <div className="text-center pt-2 pb-6 border-b border-secondary-silver/30">
@@ -1023,13 +1067,35 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
          </div>
 
          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-6 border-t-2 border-secondary-silver/20">
-            <SignatureBlock role="ผู้ประเมิน (Assessor)" signatureData={formData.assessorSign} onSignClick={()=>openSignaturePad('assessor')} isActive={canEdit('general')} isSigned={!!formData.assessorSign} />
-            <SignatureBlock role="ฝ่ายบุคคล (HR)" signatureData={formData.hrSign} onSignClick={()=>openSignaturePad('hr')} isActive={canEdit('hr')} isSigned={!!formData.hrSign} hasComment commentVal={formData.hrOpinion} onCommentChange={handleHROpinionChange} commentDisabled={!canEdit('hr')} />
-            <SignatureBlock role="ผู้อนุมัติ (Approver)" signatureData={formData.approverSign} onSignClick={()=>openSignaturePad('approver')} isActive={canEdit('approver')} isSigned={!!formData.approverSign} />
+            <SignatureBlock 
+              role="ผู้ประเมิน (Assessor)" 
+              signatureData={formData.assessorSign} 
+              onSignClick={()=>openSignaturePad('assessor')} 
+              isActive={canEdit('general')} 
+              isSigned={!!formData.assessorSign} 
+            />
+            <SignatureBlock 
+              role={appSettings.role_hr_title || "ฝ่ายบุคคล (HR)"} 
+              signatureData={formData.hrSign} 
+              onSignClick={()=>openSignaturePad('hr')} 
+              isActive={canEdit('hr')} 
+              isSigned={!!formData.hrSign} 
+              hasComment 
+              commentVal={formData.hrOpinion} 
+              onCommentChange={handleHROpinionChange} 
+              commentDisabled={!canEdit('hr')} 
+            />
+            <SignatureBlock 
+              role={appSettings.role_approver_title || "ผู้อนุมัติ (Approver)"} 
+              signatureData={formData.approverSign} 
+              onSignClick={()=>openSignaturePad('approver')} 
+              isActive={canEdit('approver')} 
+              isSigned={!!formData.approverSign} 
+            />
          </div>
       </div>
       
-      {signatureModalOpen && <SignatureModal onSave={handleSaveSignature} onClose={() => setSignatureModalOpen(false)} title={`ลงชื่อ: ${signTarget === 'assessor' ? 'ผู้ประเมิน' : signTarget === 'hr' ? 'ฝ่ายบุคคล' : 'ผู้อนุมัติ'}`} />}
+      {signatureModalOpen && <SignatureModal onSave={handleSaveSignature} onClose={() => setSignatureModalOpen(false)} title={`ลงชื่อ: ${signTarget === 'assessor' ? 'ผู้ประเมิน' : signTarget === 'hr' ? (appSettings.role_hr_title || 'ฝ่ายบุคคล') : (appSettings.role_approver_title || 'ผู้อนุมัติ')}`} />}
     </div>
   );
 };
@@ -1416,23 +1482,25 @@ const sendGmailNotification = async (employeeName, currentStatus, nextStatus, ev
   let signRole = ''; 
 
   // URL ของหน้าเว็บ GitHub Pages
-  // ⚠️ เปลี่ยนเป็น URL จริงของคุณเมื่อ Deploy เสร็จแล้ว
   const baseUrl = 'https://philm003.github.io/CMT-HRD-EvaluationSystem'; 
 
-  // ใช้ค่าจาก Settings ถ้าไม่มีให้ใช้ค่า Default
+  // ใช้ค่าจาก Settings (พร้อมชื่อตำแหน่ง)
+  const hrTitle = settings?.role_hr_title || 'HR Manager';
+  const approverTitle = settings?.role_approver_title || 'CEO';
+  
   const emailHR = settings?.email_hr || 'burin.wo@gmail.com';
   const emailApprover = settings?.email_approver || 'burin.wo@gmail.com';
 
   if (nextStatus === 'pending_hr') {
       toEmail = emailHR; 
       subject = `[Action Required] กรุณาลงนามผลประเมินของ ${employeeName}`;
-      messageHtml = `<h3>เรียน HR Manager,</h3><p>กรุณาตรวจสอบและลงนามผลการทดลองงานของ <b>${employeeName}</b></p>`;
+      messageHtml = `<h3>เรียน ${hrTitle},</h3><p>กรุณาตรวจสอบและลงนามผลการทดลองงานของ <b>${employeeName}</b></p>`;
       signRole = 'hr';
   } 
   else if (nextStatus === 'pending_approval') {
       toEmail = emailApprover; 
       subject = `[Action Required] กรุณาอนุมัติผลประเมินของ ${employeeName}`;
-      messageHtml = `<h3>เรียน CEO,</h3><p>ฝ่ายบุคคลตรวจสอบเรียบร้อยแล้ว โปรดพิจารณาอนุมัติ</p>`;
+      messageHtml = `<h3>เรียน ${approverTitle},</h3><p>ฝ่ายบุคคลตรวจสอบเรียบร้อยแล้ว โปรดพิจารณาอนุมัติ</p>`;
       signRole = 'approver';
   } 
   else if (nextStatus === 'completed') {
@@ -1462,9 +1530,12 @@ const sendGmailNotification = async (employeeName, currentStatus, nextStatus, ev
 };
 
 // --- handlePrint Function ---
-const handlePrint = (data, totalScore, avgScore) => {
+const handlePrint = (data, totalScore, avgScore, settings) => {
   const printWindow = window.open('', '_blank');
   
+  const hrTitle = settings?.role_hr_title || 'ฝ่ายทรัพยากรบุคคล';
+  const approverTitle = settings?.role_approver_title || 'ประธานเจ้าหน้าที่บริหาร';
+
   const parseDate = (dateStr) => {
       if (!dateStr) return { d:'', m: '', y: '' };
       try {
@@ -1697,14 +1768,14 @@ const handlePrint = (data, totalScore, avgScore) => {
                         <div class="sig-line" style="margin:0 auto;">
                             ${data.hrSign ? `<img src="${data.hrSign}" class="sig-img">` : ''}
                         </div>
-                        <div style="margin-top:5px;">( ฝ่ายทรัพยากรบุคคล )</div>
+                        <div style="margin-top:5px;">( ${hrTitle} )</div>
                         <div style="font-size:10px;">ลงชื่อ (Sign)</div>
                     </div>
                     <div class="text-center">
                          <div class="sig-line" style="margin:0 auto;">
                             ${data.approverSign ? `<img src="${data.approverSign}" class="sig-img">` : ''}
                         </div>
-                        <div style="margin-top:5px;">( ประธานเจ้าหน้าที่บริหาร )</div>
+                        <div style="margin-top:5px;">( ${approverTitle} )</div>
                         <div style="font-size:10px;">ผู้อนุมัติ (Approver)</div>
                     </div>
                 </div>
