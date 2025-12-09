@@ -86,7 +86,7 @@ Error generating stack: `+e.message+`
             table.eval-table th { background-color: #f0f0f0; font-weight: bold; text-align: center; height: 40px; }
 
             table.head-eval-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 15px; border: 1px solid #000; }
-            table.head-eval-table th, table.eval-table td { border: 1px solid #000; padding: 4px; vertical-align: middle; }
+            table.head-eval-table th, table.head-eval-table td { border: 1px solid #000; padding: 4px; vertical-align: middle; }
             table.head-eval-table th { background-color: #f0f0f0; font-weight: bold; text-align: center; height: 40px; }
             
             .diagonal-cell { position: relative; width: 70px; padding: 0 !important; background: linear-gradient(to top right, transparent 48%, #000 49%, #000 51%, transparent 52%); }
@@ -183,18 +183,18 @@ Error generating stack: `+e.message+`
                     <table class="head-eval-table">
                         <thead>
                             <tr>
-                                <th rowspan="2" style="width:35%; text-align:left;">หัวข้อในการประเมิน<br><span style="font-weight:normal; font-style:italic;">(Evaluate Topic)</span></th>
+                                <th rowspan="2" style="width:35%; text-align:center;">หัวข้อในการประเมิน<br><span style="font-weight:normal; font-style:italic;">(Evaluate Topic)</span></th>
                                 <th rowspan="2" class="diagonal-cell">
-                                    <div class="diag-top">คะแนน<br>Score</div>
-                                    <div class="diag-bottom">น้ำหนัก<br>Weight</div>
+                                    <div class="diag-top" style="font-size: 5px;">คะแนน<br>Score</div>
+                                    <div class="diag-bottom" style="font-size: 5px;">น้ำหนัก<br>Weight</div>
                                 </th>
-                                <th style="font-size: 10px; width: 8%">ใช้ไม่ได้<br>(Bad)<br>1</th>
-                                <th style="font-size: 10px; width: 8%">ต้องปรับปรุง<br>(Poor)<br>2</th>
-                                <th style="font-size: 10px; width: 8%">พอใช้<br>(Fair)<br>3</th>
-                                <th style="font-size: 10px; width: 8%">ดี<br>(Good)<br>4</th>
-                                <th style="font-size: 10px; width: 8%">ดีมาก<br>(Very Good)<br>5</th>
-                                <th style="font-size: 10px; width: 8%">ดีเยี่ยม<br>(Excellent)<br>6</th>
-                                <th style="font-size: 10px; width: 7.5%">ดีเลิศ<br>(Perfect)<br>7</th>
+                                <th style="font-size: 8px; width: 8%">ใช้ไม่ได้<br>(Bad)<br>1</th>
+                                <th style="font-size: 8px; width: 8%">ต้องปรับปรุง<br>(Poor)<br>2</th>
+                                <th style="font-size: 8px; width: 8%">พอใช้<br>(Fair)<br>3</th>
+                                <th style="font-size: 8px; width: 8%">ดี<br>(Good)<br>4</th>
+                                <th style="font-size: 8px; width: 8%">ดีมาก<br>(Very Good)<br>5</th>
+                                <th style="font-size: 8px; width: 8%">ดีเยี่ยม<br>(Excellent)<br>6</th>
+                                <th style="font-size: 8px; width: 7.5%">ดีเลิศ<br>(Perfect)<br>7</th>
                                 <th rowspan="2" style="width:8%;">คะแนน<br>(Score)</th>
                             </tr>
                         </thead>
