@@ -299,6 +299,8 @@ export default function App() {
 
 const SettingsModal = ({ onClose, currentSettings, onSave, setGlobalLoading }) => {
   const [formData, setFormData] = useState({
+    statStartDate: "",
+    statEndDate: "",
     role_hr_title: currentSettings.role_hr_title || 'ฝ่ายบุคคล (HR)',
     email_hr: currentSettings.email_hr || '',
     role_approver_title: currentSettings.role_approver_title || 'ผู้อนุมัติ (Approver)',
@@ -909,6 +911,33 @@ return (
                     <span className="w-1.5 h-6 bg-primary-gold rounded-full mr-2"></span>
                     ข้อมูลสถิติการทำงาน (Time Attendance)
                 </h4>
+                {/* ช่วงวันที่เก็บสถิติ */}
+                <div className="md:col-span-2 lg:col-span-3 mb-4">
+                    <label className="text-xs text-neutral-medium font-bold mb-2 block uppercase tracking-wider">
+                        ช่วงวันที่เก็บสถิติ (Statistic Period)
+                    </label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="relative">
+                            <span className="absolute top-2 left-3 text-xs text-neutral-medium">ตั้งแต่วันที่</span>
+                            <input 
+                                type="date"
+                                value={formData.statStartDate || ""}
+                                onChange={(e) => setFormData({ ...formData, statStartDate: e.target.value })}
+                                className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pt-6 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none font-medium"
+                            />
+                        </div>
+                        <div className="relative">
+                            <span className="absolute top-2 left-3 text-xs text-neutral-medium">ถึงวันที่</span>
+                            <input 
+                                type="date"
+                                value={formData.statEndDate || ""}
+                                onChange={(e) => setFormData({ ...formData, statEndDate: e.target.value })}
+                                className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pt-6 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none font-medium"
+                            />
+                        </div>
+                    </div>
+                </div>
+    
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {/* 1. ลาป่วย (Sick Leave) */}
