@@ -84,6 +84,10 @@ Error generating stack: `+e.message+`
             table.eval-table { width: 100%; border-collapse: collapse; margin-top: 15px; border: 1px solid #000; }
             table.eval-table th, table.eval-table td { border: 1px solid #000; padding: 4px; vertical-align: middle; }
             table.eval-table th { background-color: #f0f0f0; font-weight: bold; text-align: center; height: 40px; }
+
+            table.head-eval-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 15px; border: 1px solid #000; }
+            table.head-eval-table th, table.eval-table td { border: 1px solid #000; padding: 4px; vertical-align: middle; }
+            table.head-eval-table th { background-color: #f0f0f0; font-weight: bold; text-align: center; height: 40px; }
             
             .diagonal-cell { position: relative; width: 70px; padding: 0 !important; background: linear-gradient(to top right, transparent 48%, #000 49%, #000 51%, transparent 52%); }
             .diag-top { position: absolute; top: 2px; right: 2px; font-size: 10px; text-align: right; line-height: 1; }
@@ -120,13 +124,13 @@ Error generating stack: `+e.message+`
                 
                 <div class="container">
                     <header class="header">
-                        <div class="company-info">
+                        <div class="company-info" style = "width: 40%;">
                             <div><strong>บริษัท คาร์เปท เมกเกอร์ (ประเทศไทย) จำกัด และ</strong></div>
                             <div><strong>บริษัท คาร์เปท เมกเกอร์ พี2ดับบลิว (ประเทศไทย) จำกัด</strong></div>
                             <div style="margin-top:2px;">The Carpet Maker (Thailand) Ltd. And</div>
                             <div>The Carpet Maker P2W (Thailand) Ltd.</div>
                         </div>
-                        <div class="form-title">
+                        <div class="form-title" style = "width: 60%; text-align: center;">
                             <h1>แบบประเมินผลการทดลองงานของพนักงาน</h1>
                             <p>Probation Evaluation Form</p>
                         </div>
@@ -146,12 +150,12 @@ Error generating stack: `+e.message+`
                         <div class="info-row">
                             <span class="field-label">เริ่มงานวันที่ (Start):</span> 
                             <span class="field-value" style="width: 20px; flex:none;">${c.d}</span>
-                            <span class="field-label">เดือน:</span> <span class="field-value" style="width: 60px; flex:none;">${c.m}</span>
-                            <span class="field-label">พ.ศ.:</span> <span class="field-value" style="width: 50px; flex:none;">${c.y}</span>
+                            <span class="field-label">เดือน:</span> <span class="field-value" style="width: 75px; flex:none;">${c.m}</span>
+                            <span class="field-label">พ.ศ.:</span> <span class="field-value" style="width: 35px; flex:none;">${c.y}</span>
                             <span style="flex-grow:1;"></span> <span class="field-label">ครบกำหนด (Due):</span> 
                             <span class="field-value" style="width: 20px; flex:none;">${l.d}</span>
-                            <span class="field-label">เดือน:</span> <span class="field-value" style="width: 60px; flex:none;">${l.m}</span>
-                            <span class="field-label">พ.ศ.:</span> <span class="field-value" style="width: 50px; flex:none;">${l.y}</span>
+                            <span class="field-label">เดือน:</span> <span class="field-value" style="width: 75px; flex:none;">${l.m}</span>
+                            <span class="field-label">พ.ศ.:</span> <span class="field-value" style="width: 35px; flex:none;">${l.y}</span>
                         </div>
                     </div>
 
@@ -176,7 +180,7 @@ Error generating stack: `+e.message+`
                         เขียนวงกลมล้อมรอบคะแนนที่ประเมินให้ (Write a circle around the rating that is evaluated)
                     </div>
 
-                    <table class="eval-table">
+                    <table class="head-eval-table">
                         <thead>
                             <tr>
                                 <th rowspan="2" style="width:35%; text-align:left;">หัวข้อในการประเมิน<br><span style="font-weight:normal; font-style:italic;">(Evaluate Topic)</span></th>
@@ -184,18 +188,18 @@ Error generating stack: `+e.message+`
                                     <div class="diag-top">คะแนน<br>Score</div>
                                     <div class="diag-bottom">น้ำหนัก<br>Weight</div>
                                 </th>
-                                <th>ใช้ไม่ได้<br>(Bad)<br>1</th>
-                                <th>ต้องปรับปรุง<br>(Poor)<br>2</th>
-                                <th>พอใช้<br>(Fair)<br>3</th>
-                                <th>ดี<br>(Good)<br>4</th>
-                                <th>ดีมาก<br>(Very Good)<br>5</th>
-                                <th>ดีเยี่ยม<br>(Excellent)<br>6</th>
-                                <th>ดีเลิศ<br>(Perfect)<br>7</th>
+                                <th style="font-size: 10px; width: 8%">ใช้ไม่ได้<br>(Bad)<br>1</th>
+                                <th style="font-size: 10px; width: 8%">ต้องปรับปรุง<br>(Poor)<br>2</th>
+                                <th style="font-size: 10px; width: 8%">พอใช้<br>(Fair)<br>3</th>
+                                <th style="font-size: 10px; width: 8%">ดี<br>(Good)<br>4</th>
+                                <th style="font-size: 10px; width: 8%">ดีมาก<br>(Very Good)<br>5</th>
+                                <th style="font-size: 10px; width: 8%">ดีเยี่ยม<br>(Excellent)<br>6</th>
+                                <th style="font-size: 10px; width: 7.5%">ดีเลิศ<br>(Perfect)<br>7</th>
                                 <th rowspan="2" style="width:8%;">คะแนน<br>(Score)</th>
                             </tr>
                         </thead>
                         <tbody>
-                            ${[{id:1,w:15,t:`ปริมาณงานที่ทำสำเร็จ`,e:`(The amount of work accomplished)`},{id:2,w:15,t:`คุณภาพของงานที่ทำสำเร็จ`,e:`(The quality of the complete work)`},{id:3,w:15,t:`การปฏิบัติตามคำสั่ง / WI / WP`,e:`(Compliance with orders)`},{id:4,w:10,t:`ความสามารถการเรียนรู้งาน`,e:`(Ability to learn)`},{id:5,w:10,t:`ความรับผิดชอบในงาน`,e:`(Responsibility)`},{id:6,w:10,t:`ความร่วมมือในการทำงานเป็นทีม`,e:`(Cooperation / Teamwork)`},{id:7,w:10,t:`การตรงต่อเวลา`,e:`(Punctuality)`},{id:8,w:5,t:`ความปลอดภัยและชีวอนามัย`,e:`(Safety and Health)`},{id:9,w:5,t:`ความซื่อสัตย์ / ทัศนคติ`,e:`(Honesty / Attitude)`},{id:10,w:5,t:`การปฏิบัติตามกฎระเบียบ`,e:`(Compliance with rules)`}].map(t=>{let n=e.ratings[t.id],r=n?(t.w/7*n).toFixed(2):``,i=``;for(let e=1;e<=7;e++)i+=`<td class="text-center"><div class="rating-circle ${n==e?`selected`:``}">${e}</div></td>`;return`
+                            ${[{id:1,w:15,t:`ปริมาณงานที่ทำสำเร็จจากที่ได้มอบหมาย`,e:`(The amount of work accomplished from the assignment)`},{id:2,w:15,t:`คุณภาพของงานที่ทำสำเร็จ`,e:`(The quality of the complete work)`},{id:3,w:15,t:`การปฏิบัติตามคำสั่งของผู้บังคับบัญชาหรือตาม WI หรือ WP`,e:`(Compliance with orders of supervisors or according to WI or WP)`},{id:4,w:10,t:`ความสามารถการเรียนรู้งานและความเข้าใจในงานที่ทำ`,e:`(Ability to learn and understand the work)`},{id:5,w:10,t:`ความไว้วางใจและความรับผิดชอบในงานที่ได้รับมอบหมาย`,e:`(Trust and responsibility in assigned work)`},{id:6,w:10,t:`ความร่วมมือในการทำงานเป็นทีม`,e:`(Cooperation in Teamwork)`},{id:7,w:10,t:`การตรงต่อเวลาและความสม่ำเสมอในการมาทำงาน`,e:`(Punctuality in working, quitting work and Consistency in working)`},{id:8,w:5,t:`การเอาใจใส่ในการปฏิบัติตามกฎเรื่องความปลอดภัยและชีวอนามัยของบริษัทฯ`,e:`(Caring for compliance the safety and health regulations of the company)`},{id:9,w:5,t:`ความชื่อสัตย์ และทัศนคติที่ดีต่อบริษัท`,e:`(Honesty and good attitude towards the company)`},{id:10,w:5,t:`การปฏิบัติตามกฎระเบียบและการรักษาทรัพย์สินของบริษัท`,e:`(Compliance with rules and regulations for maintaining company assets)`}].map(t=>{let n=e.ratings[t.id],r=n?(t.w/7*n).toFixed(2):``,i=``;for(let e=1;e<=7;e++)i+=`<td class="text-center"><div class="rating-circle ${n==e?`selected`:``}">${e}</div></td>`;return`
                                     <tr>
                                         <td style="text-align: left;">
                                             <div>${t.id}. ${t.t}</div>
@@ -282,7 +286,7 @@ Error generating stack: `+e.message+`
                 </div>
 
             </div> </div> <script>
-            window.onload = function() { setTimeout(function(){ window.print(); }, 500); }
+            // window.onload = function() { setTimeout(function(){ window.print(); }, 500); }
         <\/script>
     </body>
     </html>
