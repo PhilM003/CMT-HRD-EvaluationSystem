@@ -183,18 +183,18 @@ Error generating stack: `+e.message+`
                     <table class="head-eval-table">
                         <thead>
                             <tr>
-                                <th rowspan="2" style="width:35%; text-align:center;">หัวข้อในการประเมิน<br><span style="font-weight:normal; font-style:italic;">(Evaluate Topic)</span></th>
-                                <th rowspan="2" class="diagonal-cell">
+                                <th rowspan="2" style="width:52%; text-align:center;">หัวข้อในการประเมิน<br><span style="font-weight:normal; font-style:italic;">(Evaluate Topic)</span></th>
+                                <th rowspan="2" class="diagonal-cell" style="font-size: 4px; width: 6%">
                                     <div class="diag-top" style="font-size: 6px;">คะแนน<br>Score</div>
                                     <div class="diag-bottom" style="font-size: 6px;">น้ำหนัก<br>Weight</div>
                                 </th>
-                                <th style="font-size: 8px; width: 4%">ใช้ไม่ได้<br>(Bad)<br>1</th>
-                                <th style="font-size: 8px; width: 4%">ต้องปรับปรุง<br>(Poor)<br>2</th>
-                                <th style="font-size: 8px; width: 4%">พอใช้<br>(Fair)<br>3</th>
-                                <th style="font-size: 8px; width: 4%">ดี<br>(Good)<br>4</th>
-                                <th style="font-size: 8px; width: 4%">ดีมาก<br>(Very Good)<br>5</th>
-                                <th style="font-size: 8px; width: 4%">ดีเยี่ยม<br>(Excellent)<br>6</th>
-                                <th style="font-size: 8px; width: 4%">ดีเลิศ<br>(Perfect)<br>7</th>
+                                <th style="font-size: 8px; width: 6%">ใช้ไม่ได้<br>(Bad)<br>1</th>
+                                <th style="font-size: 8px; width: 6%">ต้องปรับปรุง<br>(Poor)<br>2</th>
+                                <th style="font-size: 8px; width: 6%">พอใช้<br>(Fair)<br>3</th>
+                                <th style="font-size: 8px; width: 6%">ดี<br>(Good)<br>4</th>
+                                <th style="font-size: 8px; width: 6%">ดีมาก<br>(Very Good)<br>5</th>
+                                <th style="font-size: 7px; width: 6%">ดีเยี่ยม<br>(Excellent)<br>6</th>
+                                <th style="font-size: 8px; width: 6%">ดีเลิศ<br>(Perfect)<br>7</th>
                                 <th rowspan="2" style="width:8%;">คะแนน<br>(Score)</th>
                             </tr>
                         </thead>
