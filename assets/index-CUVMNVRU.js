@@ -255,12 +255,17 @@ Error generating stack: `+e.message+`
             </div>
 
             <div class="section-box no-border-top">
-                <div class="flex" style="margin-bottom:10px; align-items: flex-end; font-size:11px;">
-                    <span class="sig-label" style="min-width:70px;">ความเห็น (Opinion) : แผนกบริหารทรัพยากรมนุษย์:</span>
-                    <span class="sig-label" style="min-width:70px;">(Human Resource Management Department)
-                    </span><span class="border-b w-full" style="color:blue;">${e.hrOpinion||``}</span>
-                    
-                </div>
+                <div style="margin-bottom:10px; font-size:11px; display:flex; flex-direction:column;">
+                  <span class="sig-label" style="min-width:70px;">
+                      ความเห็น (Opinion) : แผนกบริหารทรัพยากรมนุษย์:
+                  </span>
+                  <div style="display:flex; align-items:flex-end; gap:5px;">
+                      <span class="sig-label">(Human Resource Management Department)</span>
+                      <span class="border-b" style="flex:1; color:blue; display:inline-block;">
+                          ${e.hrOpinion||``}
+                      </span>
+                  </div>
+              </div>
                 <div class="flex justify-end" style="padding-right: 15px; text-align: right; font-size:11px;">
                      <div class="text-center" style="text-align: center;">
                         <div class="sig-line" style="margin:0 auto;">
