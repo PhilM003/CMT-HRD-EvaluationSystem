@@ -781,13 +781,33 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
         setGlobalLoading(true);
         const savedData = await apiCall(updatedFormData);
         
+        // --- 🟢 เริ่มจุดที่ต้องแก้ (บรรทัดเดิมประมาณ 530) ---
+        
+        // 1. อัปเดต State ให้เรียบร้อยก่อน
         setDbId(savedData.id);
         setFormData(savedData);
         setStatus(newStatus);
         setSignatureModalOpen(false);
 
-        // ✅ ส่ง Email โดยใช้ Settings และ Title ใหม่
-        await sendGmailNotification(savedData.employeeName, status, newStatus, savedData.id, appSettings);
+        // 2. ✅ แก้ไข: สร้างตัวแปร ID ให้ชัวร์ที่สุด (กันไว้ 3 ชั้น)
+        // ถ้า savedData.id ไม่มี -> ให้ใช้ dbId เดิม -> ถ้าไม่มีให้ใช้ formData.id
+        const safeEvalId = savedData.id || dbId || formData.id; 
+
+        if (!safeEvalId) {
+            console.error("❌ Error: Missing Evaluation ID for Email");
+            alert("บันทึกได้ แต่สร้าง Link อีเมลไม่ได้เนื่องจากไม่พบ ID");
+        }
+
+        // 3. ส่ง Email โดยใช้ safeEvalId ที่เราเตรียมไว้
+        await sendGmailNotification(
+            savedData.employeeName || formData.employeeName, 
+            status, 
+            newStatus, 
+            safeEvalId, // <--- ใช้ตัวแปรนี้แทน savedData.id
+            appSettings
+        );
+
+        // --- 🔴 จบจุดที่ต้องแก้ ---
 
         if (autoOpenSignRole) {
             setIsComplete(true); 
