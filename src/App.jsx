@@ -73,8 +73,8 @@ export default function App() {
   // Global State
   const [user, setUser] = useState({ 
     username: 'admin', 
-    name: 'Assess Admin', 
-    role: 'admin'  
+    name: 'Assess Admin',  // เปลี่ยนชื่อตามต้องการ
+    role: 'admin'          // ใช้ role 'admin' เพื่อให้เข้าถึง Settings/Dashboard ได้
   }); 
   
   const [view, setView] = useState('dashboard'); 
@@ -84,11 +84,12 @@ export default function App() {
   // Data State
   const [evaluations, setEvaluations] = useState([]);
   const [employees, setEmployees] = useState([]); 
+  // เก็บค่า Settings (เพิ่ม Title เข้ามา)
   const [appSettings, setAppSettings] = useState({ 
     email_hr: '', 
-    role_hr_title: 'ฝ่ายบุคคล (HR)', 
+    role_hr_title: 'ฝ่ายบุคคล (HR)', // Default value
     email_approver: '',
-    role_approver_title: 'ผู้อนุมัติ (Approver)' 
+    role_approver_title: 'ผู้อนุมัติ (Approver)' // Default value
   }); 
   const [selectedEval, setSelectedEval] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -96,6 +97,7 @@ export default function App() {
 
   // --- Initial Load ---
   useEffect(() => {
+    // Favicon
     if (LOGO_URL) {
       const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
       link.type = 'image/x-icon';
@@ -104,6 +106,7 @@ export default function App() {
       document.getElementsByTagName('head')[0].appendChild(link);
     }
 
+    // Check Magic Link
     const params = new URLSearchParams(window.location.search);
     const linkEvalId = params.get('eval_id');
     const linkSignRole = params.get('sign_role');
@@ -114,6 +117,7 @@ export default function App() {
         fetchEvaluations();
         fetchEmployees();
     }
+    // ดึงค่า Settings
     fetchSettings();
   }, []);
 
@@ -126,25 +130,15 @@ export default function App() {
             role: role, 
             username: 'guest' 
           };
-          setUser(guestUser); 
-          
-          // ✅ FIX: ดึงข้อมูลแล้วเช็คว่ามีจริงไหม
+          setUser(guestUser); // Set เป็น Guest
           const data = await apiCall({ action: 'getEvaluationById', id: id });
-          
-          if (!data || data.message === "Not found" || Object.keys(data).length === 0) {
-             throw new Error("Form not found or empty data");
-          }
-
+          if (!data || data.message === "Not found") throw new Error("Form not found");
           setSelectedEval(data);
           setView('form');
           setAutoOpenRole(role);
-          
-          // ไม่ต้อง replaceState URL เพื่อให้ User refresh แล้วยังอยู่ที่เดิมได้
-          // window.history.replaceState({}, document.title, "/"); 
+          window.history.replaceState({}, document.title, "/");
       } catch (e) {
-          console.error(e);
-          alert("ไม่พบข้อมูลแบบประเมิน หรือ Link ไม่ถูกต้อง\n(กรุณาตรวจสอบ ID หรือติดต่อ Admin)");
-          // ถ้า error ให้กลับไปหน้า dashboard เปล่าๆ หรือหน้า login
+          alert("ไม่พบข้อมูลแบบประเมิน หรือ Link ไม่ถูกต้อง");
       } finally {
           setIsLoading(false);
       }
@@ -200,9 +194,8 @@ export default function App() {
   
   const handleSaveComplete = async () => { 
       await fetchEvaluations(); 
-      // ไม่ต้องเด้งกลับ Dashboard ทันที ถ้า user กด save ธรรมดา 
-      // แต่ถ้าอยากให้เด้งกลับค่อย uncomment บรรทัดล่าง
-      // setView('dashboard'); setAutoOpenRole(null); 
+      setView('dashboard'); 
+      setAutoOpenRole(null); 
   };
 
   // --- RENDER ---
@@ -228,6 +221,7 @@ export default function App() {
          </div>
          
          <div className="flex items-center gap-4">
+          {/* ปุ่ม Settings (แสดงเฉพาะ Admin/Assess) */}
             {(user.role === 'admin' || user.role === 'assess') && (
               <button 
                 onClick={() => setShowSettingsModal(true)} 
@@ -269,7 +263,7 @@ export default function App() {
           onSaveComplete={handleSaveComplete}
           autoOpenSignRole={autoOpenRole} 
           setGlobalLoading={setIsLoading}
-          appSettings={appSettings} 
+          appSettings={appSettings} // ส่ง Settings ไปให้ Form ใช้
         />
       )}
 
@@ -299,7 +293,10 @@ export default function App() {
   );
 }
 
-// ... (SettingsModal และ DashboardView คงเดิม ไม่มีการแก้ไข logic สำคัญ) ...
+// ==========================================
+// SUB COMPONENTS
+// ==========================================
+
 const SettingsModal = ({ onClose, currentSettings, onSave, setGlobalLoading }) => {
   const [formData, setFormData] = useState({
     attendFrom: "",
@@ -552,28 +549,13 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
   const [dbId, setDbId] = useState(initialData?.id || null);
   const [isComplete, setIsComplete] = useState(false);
   const isAdmin = currentRole === 'admin';
-  
-  // ✅ FIX: ปลดล็อก Permissions
-  // ถ้าเข้าผ่าน Dashboard (autoOpenSignRole เป็น null) -> Admin และ Assessor (general) แก้ไขได้
-  // ถ้าเข้าผ่าน Magic Link (autoOpenSignRole มีค่า) -> เช็คตาม Role ที่ส่งมา
   const canEdit = (targetRole) => {
-      // 1. ถ้ามาทาง Link (Guest) ต้องตรง Role เท่านั้น
-      if (autoOpenSignRole) {
-          if (status === 'completed' || status === 'rejected') return false;
-          return autoOpenSignRole === targetRole;
-      }
-      
-      // 2. ถ้ามาทาง Dashboard (Admin / Assessor Login)
-      if (isAdmin) return true; // Admin แก้ได้ทุกช่อง
-      if (currentRole === 'assessor') {
-           // Assessor แก้ข้อมูลทั่วไปได้เสมอ ถ้ายังไม่เสร็จ (หรือจะยอมให้แก้ตอน completed ก็ลบเงื่อนไข status ออก)
-           if (targetRole === 'general') return status !== 'completed';
-           return false; // Assessor แก้ช่อง HR/Approver ไม่ได้
-      }
-
-      return false;
-  };
-
+      if (status === 'completed' || status === 'rejected') return false;
+      if (targetRole === 'general') targetRole = 'assessor';
+      if (isAdmin && targetRole === 'assessor') return true;
+      return currentRole === targetRole;
+    };
+  
   const initialFormData = {
     employeeName: '', employeeId: '', position: '', section: '', department: '', startDate: '', dueProbationDate: '',
     attendFrom: '', attendTo: '',
@@ -582,7 +564,6 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     passProbation: false, notPassProbation: false, notPassReason: '', otherOpinion: false, otherOpinionText: '',
     assessorSign: '', hrOpinion: '', hrSign: '', approverSign: ''
   };
-  
   const [formData, setFormData] = useState(() => {
       if (!initialData) return initialFormData;
       return {
@@ -591,21 +572,6 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
           ratings: initialData.ratings || {} 
       };
   });
-
-  // ✅ FIX: Magic Link - ใส่ useEffect เพื่ออัปเดต formData เมื่อ initialData เปลี่ยน (สำคัญมากสำหรับการโหลด Async)
-  useEffect(() => {
-    if (initialData) {
-        setFormData(prev => ({
-            ...initialFormData,
-            ...initialData,
-            ratings: initialData.ratings || {}
-        }));
-        setStatus(initialData.status || 'draft');
-        setDbId(initialData.id);
-    }
-  }, [initialData]);
-
-
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [signTarget, setSignTarget] = useState(null);
@@ -639,21 +605,24 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     { id: 10, weight: 5, t: 'กฎระเบียบ (Rules)' }
   ];
 
-  // Score Calculation
+// Score Calculation
   useEffect(() => {
     let weightedSum = 0; 
+    let rawSum = 0;      
     let count = 0;       
 
     evaluationTopics.forEach(topic => {
       const r = formData.ratings[topic.id] || 0;
       if(r > 0) {
         weightedSum += (topic.weight * r);
+        rawSum += r;
         count++;
       }
     });
 
     setTotalScore(weightedSum);
-    setAvgScore(weightedSum / 7); 
+    // CHANGE: เปลี่ยนจาก (rawSum / count) เป็น (weightedSum / 7) ตามคำขอ
+    setAvgScore(weightedSum / 7); // Changed from (rawSum / count) to (weightedSum / 7) as requested.
   }, [formData.ratings]);
 
   const handleNameSearch = (e) => {
@@ -678,8 +647,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
 
   const handleInputChange = (e) => {
     const { name } = e.target;
-    // Allow admin or assessor to edit
-    if (name !== 'employeeName' && !canEdit('general')) return; 
+    if (name !== 'employeeName' && currentRole !== 'admin' && currentRole !== 'assessor') return; 
 
     const { value, type, checked } = e.target;
     if (name.includes('.')) {
@@ -691,7 +659,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
   };
 
   const handleNestedChange = (category, field, value) => {
-    if (!canEdit('general')) return;
+    if (isReadOnly('general')) return; // ป้องกันการแก้ไขถ้าอยู่ในโหมด Read Only
 
     setFormData(prev => ({
         ...prev,
@@ -728,9 +696,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
   };
 
   const isReadOnly = (section) => !canEdit(section);
-  
-  // Admin แก้ไขข้อมูลพนักงานได้เสมอ
-  const isEmployeeInfoEditable = () => isAdmin || (currentRole === 'assessor' && status === 'draft');
+  const isEmployeeInfoEditable = () => currentRole === 'admin';
 
   const handleResetStatus = () => {
     if (!confirm("⚠️ ต้องการรีเซ็ตสถานะกลับเป็น Draft หรือไม่?")) return;
@@ -739,38 +705,25 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
   };
   
   const openSignaturePad = (target) => {
-    // Admin เปิดได้ทุกช่อง
-    if (isAdmin) {
+    if (target === 'assessor' && isAdmin) {
         setSignTarget(target);
         setSignatureModalOpen(true);
         return;
     }
-    
-    // Logic ปกติสำหรับ User ทั่วไป
-    if (target === 'assessor' && currentRole === 'assessor') {
-         setSignTarget('assessor');
-         setSignatureModalOpen(true);
-         return;
-    }
-
-    if (autoOpenSignRole) {
-        if (target !== autoOpenSignRole) return alert("⛔ คุณไม่มีสิทธิ์เซ็นช่องนี้");
-        setSignTarget(target);
-        setSignatureModalOpen(true);
-        return;
-    }
-    
-    alert("⛔ คุณไม่มีสิทธิ์เซ็นช่องนี้");
+    if (currentRole !== target) return alert("⛔ คุณไม่มีสิทธิ์เซ็นช่องนี้");
+    if (target === 'hr' && status === 'draft') return alert("⚠️ ต้องให้ผู้ประเมินส่งเรื่องมาก่อน");
+    if (target === 'approver' && status !== 'pending_approval') return alert("⚠️ ต้องผ่านการตรวจสอบจาก HR ก่อน");
+    setSignTarget(target);
+    setSignatureModalOpen(true);
   };
 
-  // ✅ FIX: Save Draft Button (บันทึกข้อมูลเฉยๆ ไม่เปลี่ยน Status)
   const saveToDB = async () => {
     if (!formData.employeeName) return alert("❌ กรุณาระบุชื่อพนักงาน");
     
     setGlobalLoading(true);
     const payload = { 
         ...formData, 
-        status: status, // ใช้ Status เดิม
+        status, 
         lastUpdated: new Date().toISOString(), 
         updatedBy: currentRole,
         action: 'saveEvaluation' 
@@ -778,10 +731,10 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     
     try {
       const savedData = await apiCall(payload);
+      
       setDbId(savedData.id); 
-      setFormData(prev => ({...prev, ...savedData})); // Update local data
-      alert("✅ บันทึกร่างเรียบร้อย (Saved)");
-      if(onSaveComplete) onSaveComplete(); // Refresh list if needed
+      alert("✅ บันทึกข้อมูลเรียบร้อย");
+      onSaveComplete();
     } catch (error) { 
         alert("❌ บันทึกไม่สำเร็จ"); 
     } finally { 
@@ -791,12 +744,9 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
 
   const handleSaveSignature = async (dataUrl) => { 
     let newStatus = status;
-    // Logic เลื่อนสถานะอัตโนมัติเมื่อเซ็น
-    if (signTarget === 'assessor' && status === 'draft') newStatus = 'pending_hr';
-    if (signTarget === 'hr' && status === 'pending_hr') newStatus = 'pending_approval';
-    if (signTarget === 'approver' && status === 'pending_approval') newStatus = 'completed';
-    
-    // ถ้าเป็น Admin บังคับเซ็น ไม่ต้องเลื่อนสถานะก็ได้ หรือจะเลื่อนก็ได้ (ในที่นี้ให้เลื่อนตาม Flow ปกติ)
+    if (signTarget === 'assessor') newStatus = 'pending_hr';
+    if (signTarget === 'hr') newStatus = 'pending_approval';
+    if (signTarget === 'approver') newStatus = 'completed';
     
     const updatedFormData = { 
         ...formData, 
@@ -816,13 +766,13 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
         setStatus(newStatus);
         setSignatureModalOpen(false);
 
-        // ✅ ส่ง Email พร้อม ID ใหม่ใน Subject
+        // ✅ ส่ง Email โดยใช้ Settings และ Title ใหม่
         await sendGmailNotification(savedData.employeeName, status, newStatus, savedData.id, appSettings);
 
         if (autoOpenSignRole) {
             setIsComplete(true); 
         } else {
-            alert("✅ บันทึกการลงนามและส่งอีเมลเรียบร้อยแล้ว");
+            alert("✅ บันทึกข้อมูลและส่งอีเมลเรียบร้อยแล้ว");
         }
 
     } catch (error) {
@@ -837,7 +787,8 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     return (
       <div className="flex justify-between items-center mb-6 print:hidden">
         
-        {isAdmin || currentRole === 'assessor' ? (
+        {/* ✅ ปุ่มย้อนกลับ หรือ แสดงสถานะ (ตาม Role) */}
+        {isAdmin ? (
             <button 
                 onClick={onBack} 
                 className="flex items-center text-neutral-medium hover:text-primary-navy transition-colors font-bold px-3 py-2 rounded-lg hover:bg-secondary-cream/50"
@@ -850,11 +801,31 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
             </div>
         )}
 
+        {/* ✅ กลุ่มปุ่มขวา: Status Badge + Print + Save + Reset */}
         <div className="flex items-center gap-3">
             <StatusBadge status={status} size="lg" />
+            
+            {/* ปุ่ม Print */}
             <button onClick={() => handlePrint(formData, totalScore, avgScore, appSettings)} className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-gray-700 transition-all">
                 <Printer size={18}/> พิมพ์
             </button>
+
+            {/* ✅ [เพิ่ม] ปุ่ม Save: แสดงเฉพาะ Admin หรือคนที่ถึงคิวแก้ไข */}
+            {(isAdmin || canEdit(currentRole)) && (
+                <button 
+                    onClick={() => handleSaveToDB()} 
+                    className="flex items-center gap-2 bg-secondary-darkgold text-white px-4 py-2 rounded-lg font-bold shadow-md hover:bg-yellow-600 transition-all"
+                >
+                    <Save size={18}/> บันทึก
+                </button>
+            )}
+
+            {/* ปุ่ม Reset Status (เฉพาะ Admin) */}
+            {(status !== 'draft' && isAdmin) && (
+                <button onClick={handleResetStatus} className="flex items-center gap-2 bg-white text-red-600 border border-red-200 hover:bg-red-50 px-4 py-2 rounded-lg font-bold shadow-sm transition-all" title="Reset กลับไปเป็น Draft">
+                    <RotateCcw size={18}/> Reset
+                </button>
+            )}
         </div>
       </div>
     );
@@ -867,7 +838,8 @@ return (
       {/* Header Controls */}
       <div className="flex justify-between items-center mb-6 print:hidden">
         
-        {(!autoOpenRole) ? (
+        {/* ✅ 5. ซ่อนปุ่ม "กลับหน้า Dashboard" ถ้าไม่ใช่ Admin */}
+        {isAdmin ? (
             <button 
                 onClick={onBack} 
                 className="flex items-center text-neutral-medium hover:text-primary-navy transition-colors font-bold px-3 py-2 rounded-lg hover:bg-secondary-cream/50"
@@ -883,31 +855,19 @@ return (
         <div className="flex items-center gap-3">
             <StatusBadge status={status} size="lg" />
             
-            {/* ✅ ปุ่มบันทึกร่าง (Save Draft) - แสดงเฉพาะคนที่มีสิทธิ์แก้ */}
-            {(canEdit('general') || isAdmin) && (
-                <button 
-                    onClick={saveToDB} 
-                    className="flex items-center gap-2 bg-secondary-darkgold text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-yellow-600 transition-all"
-                >
-                    <Save size={18}/> บันทึก (Save)
-                </button>
-            )}
-
-            <button onClick={() => handlePrint(formData, totalScore, avgScore, appSettings)} className="flex items-center gap-2 bg-primary-navy text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-accent-royalblue transition-all">
+            <button onClick={() => handlePrint(formData, totalScore, avgScore, appSettings)} className="flex items-center gap-2 bg-secondary-darkgold text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-yellow-600 transition-all">
                 <Printer size={18}/> พิมพ์ (Print)
             </button>
 
             {/* ปุ่ม Reset Status (เฉพาะ Admin) */}
             {(status !== 'draft' && isAdmin) && (
-                <button onClick={handleResetStatus} className="flex items-center gap-2 bg-white text-red-600 border border-red-200 hover:bg-red-50 px-4 py-2 rounded-lg font-bold shadow-sm transition-all">
-                    <RotateCcw size={18}/> Reset
+                <button onClick={handleResetStatus} className="flex items-center gap-2 bg-white text-secondary-darkgold border border-secondary-darkgold hover:bg-secondary-cream px-4 py-2 rounded-lg font-bold shadow-sm transition-all">
+                    <RotateCcw size={18}/> Reset Status
                 </button>
             )}
         </div>
       </div>
-      
-      {/* ... (ส่วนเนื้อหา Form ทั้งหมดยังคงเหมือนเดิม) ... */}
-      
+
       <div className="text-center pt-2 pb-6 border-b border-secondary-silver/30">
           <h1 className="text-3xl font-extrabold text-primary-navy tracking-tight drop-shadow-sm">แบบประเมินผลการทดลองงาน</h1>
           <p className="text-neutral-medium text-lg mt-1 font-medium">Probation Evaluation Form</p>
@@ -1074,7 +1034,7 @@ return (
                         </div>
                     </div>
 
-                    {/* 4. มาสาย (Late) */}
+                    {/* 4. มาสาย (Late) - เพิ่มใหม่ตามที่ขอ */}
                     <div>
                         <label className="text-xs text-red-500 font-bold mb-2 block uppercase tracking-wider">มาสาย (Late)</label>
                         <div className="flex gap-2">
@@ -1101,7 +1061,7 @@ return (
                         </div>
                     </div>
 
-                    {/* 5. ขาดงาน (Absence) */}
+                    {/* 5. ขาดงาน (Absence) - เพิ่มใหม่ตามที่ขอ */}
                     <div>
                         <label className="text-xs text-red-500 font-bold mb-2 block uppercase tracking-wider">ขาดงาน (Absence)</label>
                         <div className="flex gap-2">
@@ -1309,30 +1269,30 @@ return (
               role="ผู้ประเมิน (Assessor)" 
               signatureData={formData.assessorSign} 
               onSignClick={()=>openSignaturePad('assessor')} 
-              isActive={canEdit('general') || isAdmin} 
+              isActive={canEdit('general')} 
               isSigned={!!formData.assessorSign} 
             />
             <SignatureBlock 
               role={appSettings.role_hr_title || "ฝ่ายบุคคล (HR)"} 
               signatureData={formData.hrSign} 
               onSignClick={()=>openSignaturePad('hr')} 
-              isActive={canEdit('hr') || isAdmin} 
+              isActive={canEdit('hr')} 
               isSigned={!!formData.hrSign} 
               hasComment 
               commentVal={formData.hrOpinion} 
               onCommentChange={handleHROpinionChange} 
-              commentDisabled={!(canEdit('hr') || isAdmin)} 
+              commentDisabled={!canEdit('hr')} 
             />
             <SignatureBlock 
               role={appSettings.role_approver_title || "ผู้อนุมัติ (Approver)"} 
               signatureData={formData.approverSign} 
               onSignClick={()=>openSignaturePad('approver')} 
-              isActive={canEdit('approver') || isAdmin} 
+              isActive={canEdit('approver')} 
               isSigned={!!formData.approverSign} 
               hasComment 
               commentVal={formData.approverOpinion} 
               onCommentChange={handleApproverOpinionChange} 
-              commentDisabled={!(canEdit('approver') || isAdmin)} 
+              commentDisabled={!canEdit('approver')} 
             />
          </div>
       </div>
@@ -1716,6 +1676,7 @@ const SignatureModal = ({ onSave, onClose, title }) => {
     )
 };
 
+// --- sendGmailNotification Function ---
 const sendGmailNotification = async (employeeName, currentStatus, nextStatus, evalId, settings) => {
   let toEmail = '';
   let subject = '';
@@ -1732,24 +1693,21 @@ const sendGmailNotification = async (employeeName, currentStatus, nextStatus, ev
   const emailHR = settings?.email_hr || 'burin.wo@gmail.com';
   const emailApprover = settings?.email_approver || 'burin.wo@gmail.com';
 
-  // ✅ FIX: เพิ่ม ID ใน Subject ป้องกัน Email Threading
-  const subjectPrefix = `[Eval-${evalId}]`;
-
   if (nextStatus === 'pending_hr') {
       toEmail = emailHR; 
-      subject = `${subjectPrefix} กรุณาลงนามผลประเมินของ ${employeeName} (Action Required)`;
+      subject = `[Action Required] กรุณาลงนามผลประเมินของ ${employeeName}`;
       messageHtml = `<h3>เรียน ${hrTitle},</h3><p>กรุณาตรวจสอบและลงนามผลการทดลองงานของ <b>${employeeName}</b></p>`;
       signRole = 'hr';
   } 
   else if (nextStatus === 'pending_approval') {
       toEmail = emailApprover; 
-      subject = `${subjectPrefix} กรุณาอนุมัติผลประเมินของ ${employeeName} (Action Required)`;
+      subject = `[Action Required] กรุณาอนุมัติผลประเมินของ ${employeeName}`;
       messageHtml = `<h3>เรียน ${approverTitle},</h3><p>ฝ่ายบุคคลตรวจสอบเรียบร้อยแล้ว โปรดพิจารณาอนุมัติ</p>`;
       signRole = 'approver';
   } 
   else if (nextStatus === 'completed') {
-      toEmail = emailHR; 
-      subject = `${subjectPrefix} ผลประเมิน ${employeeName} เสร็จสมบูรณ์ (Completed)`;
+      toEmail = emailHR; // ส่งกลับหา HR เมื่อเสร็จสิ้น
+      subject = `[Completed] ผลประเมิน ${employeeName} เสร็จสมบูรณ์`;
       messageHtml = `<p>การประเมินเสร็จสิ้นแล้ว</p>`;
   }
 
@@ -1757,7 +1715,6 @@ const sendGmailNotification = async (employeeName, currentStatus, nextStatus, ev
 
   if (magicLink) {
     messageHtml += `<br/><a href="${magicLink}" style="background-color: #1e293b; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">คลิกเพื่อดำเนินการต่อ (Click Here)</a>`;
-    messageHtml += `<br/><br/><small style="color:gray;">หรือคลิกที่นี่: ${magicLink}</small>`;
   }
 
   try {
