@@ -196,7 +196,7 @@ Error generating stack: `+e.message+`
                     </tr>
                 </thead>
                 <tbody>
-                    ${[{id:1,w:15,t:`ปริมาณงานที่ทำสำเร็จจากที่ได้มอบหมาย`,e:`(The amount of work accomplished from the assignment)`},{id:2,w:15,t:`คุณภาพของงานที่ทำสำเร็จ`,e:`(The quality of the complete work)`},{id:3,w:15,t:`การปฏิบัติตามคำสั่งของผู้บังคับบัญชาหรือตาม WI หรือ WP`,e:`(Compliance with orders of supervisors or according to WI or WP)`},{id:4,w:10,t:`ความสามารถการเรียนรู้งานและความเข้าใจในงานที่ทำ`,e:`(Ability to learn and understand the work)`},{id:5,w:10,t:`ความไว้วางใจและความรับผิดชอบในงานที่ได้รับมอบหมาย`,e:`(Trust and responsibility in assigned work)`},{id:6,w:10,t:`ความร่วมมือในการทำงานเป็นทีม`,e:`(Cooperation in Teamwork)`},{id:7,w:10,t:`การตรงต่อเวลาและความสม่ำเสมอในการมาทำงาน`,e:`(Punctuality in working, quitting work and Consistency in working)`},{id:8,w:5,t:`การเอาใจใส่ในการปฏิบัติตามกฎเรื่องความปลอดภัยและชีวอนามัยของบริษัทฯ`,e:`(Caring for compliance the safety and health regulations of the company)`},{id:9,w:5,t:`ความชื่อสัตย์ และทัศนคติที่ดีต่อบริษัท`,e:`(Honesty and good attitude towards the company)`},{id:10,w:5,t:`การปฏิบัติตามกฎระเบียบและการรักษาทรัพย์สินของบริษัท`,e:`(Compliance with rules and regulations for maintaining company assets)`}].map(t=>{let n=e.ratings[t.id],r=n?(t.w/7*n).toFixed(2):``,i=``;for(let e=1;e<=7;e++)i+=`<td class="text-center"><div class="rating-circle ${n==e?`selected`:``}">${e}</div></td>`;return`
+                    ${[{id:1,w:15,t:`ปริมาณงานที่ทำสำเร็จจากที่ได้มอบหมาย`,e:`(The amount of work accomplished from the assignment)`},{id:2,w:15,t:`คุณภาพของงานที่ทำสำเร็จ`,e:`(The quality of the complete work)`},{id:3,w:15,t:`การปฏิบัติตามคำสั่งของผู้บังคับบัญชาหรือตาม WI หรือ WP`,e:`(Compliance with orders of supervisors or according to WI or WP)`},{id:4,w:10,t:`ความสามารถการเรียนรู้งานและความเข้าใจในงานที่ทำ`,e:`(Ability to learn and understand the work)`},{id:5,w:10,t:`ความไว้วางใจและความรับผิดชอบในงานที่ได้รับมอบหมาย`,e:`(Trust and responsibility in assigned work)`},{id:6,w:10,t:`ความร่วมมือในการทำงานเป็นทีม`,e:`(Cooperation in Teamwork)`},{id:7,w:10,t:`การตรงต่อเวลาและความสม่ำเสมอในการมาทำงาน`,e:`(Punctuality in working, quitting work and Consistency in working)`},{id:8,w:5,t:`การเอาใจใส่ในการปฏิบัติตามกฎเรื่องความปลอดภัยและชีวอนามัยของบริษัทฯ`,e:`(Caring for compliance the safety and health regulations of the company)`},{id:9,w:5,t:`ความชื่อสัตย์ และทัศนคติที่ดีต่อบริษัท`,e:`(Honesty and good attitude towards the company)`},{id:10,w:5,t:`การปฏิบัติตามกฎระเบียบและการรักษาทรัพย์สินของบริษัท`,e:`(Compliance with rules and regulations for maintaining company assets)`}].map(t=>{let n=e.ratings[t.id],r=n?(t.w*n).toFixed(2):``,i=``;for(let e=1;e<=7;e++)i+=`<td class="text-center"><div class="rating-circle ${n==e?`selected`:``}">${e}</div></td>`;return`
                             <tr>
                                 <td style="text-align: left;">
                                     <div style="font-size:11px; color:#000000;">${t.id}. ${t.t}</div>
@@ -257,10 +257,10 @@ Error generating stack: `+e.message+`
             <div class="section-box no-border-top">
                 <div style="margin-bottom:10px; font-size:11px; display:flex; flex-direction:column;">
                   <span class="sig-label" style="min-width:70px;">
-                      ความเห็น (Opinion) : แผนกบริหารทรัพยากรมนุษย์:
+                      ความเห็น (Opinion) : แผนกบริหารทรัพยากรมนุษย์
                   </span>
                   <div style="display:flex; align-items:flex-end; gap:5px;">
-                      <span class="sig-label">(Human Resource Management Department)</span>
+                      <span class="sig-label">(Human Resource Management Department) : </span>
                       <span class="border-b" style="flex:1; color:blue; display:inline-block;">
                           ${e.hrOpinion||``}
                       </span>
@@ -277,11 +277,16 @@ Error generating stack: `+e.message+`
             </div>
 
             <div class="section-box no-border-top">
-                <div class="flex" style="margin-bottom:10px; align-items: flex-end; font-size:11px;">
-                    <span class="sig-label" style="min-width:70px;">ผู้อนุมัติ (Approver)  : ประธานเจ้าหน้าที่บริหาร</span>
-                    <span class="sig-label" style="min-width:70px;">(Chief Executive Officer)</span>
-                    <span class="border-b w-full" style="color:blue;">${e.ceoOpinion||``}</span>
-                    
+                <div style="margin-bottom:10px; font-size:11px; display:flex; flex-direction:column;">
+                  <span class="sig-label" style="min-width:70px;">
+                      ผู้อนุมัติ (Approver) : ประธานเจ้าหน้าที่บริหาร 
+                  </span>
+                  <div style="display:flex; align-items:flex-end; gap:5px;">
+                      <span class="sig-label">(Chief Executive Officer) : </span>
+                      <span class="border-b" style="flex:1; color:blue; display:inline-block;">
+                          ${e.ceoOpinion||``}
+                      </span>
+                  </div>
                 </div>
                 <div class="flex justify-end" style="padding-right: 15px; text-align: right; font-size:11px;">
                      <div class="text-center" style="text-align: center;">
