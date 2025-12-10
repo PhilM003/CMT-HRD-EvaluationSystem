@@ -777,41 +777,55 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
         action: 'saveEvaluation'
     };
 
+    // 📂 ไฟล์ App.jsx
+    // 📍 ค้นหาฟังก์ชัน handleSaveSignature แล้วแทนที่ด้วยโค้ดชุดนี้ทั้งหมดครับ
+
+  const handleSaveSignature = async (dataUrl) => { 
+    // 1. กำหนดสถานะใหม่
+    let newStatus = status;
+    if (signTarget === 'assessor') newStatus = 'pending_hr';
+    if (signTarget === 'hr') newStatus = 'pending_approval';
+    if (signTarget === 'approver') newStatus = 'completed';
+    
+    // =======================================================
+    // 🟢 จุดแก้ไข: สร้าง ID ที่หน้าเว็บทันที (ไม่ต้องรอ Backend)
+    // =======================================================
+    // ถ้ามี ID เดิมใช้อันเดิม ถ้าไม่มีให้สร้างใหม่ด้วยเวลาปัจจุบัน
+    const forcedId = dbId || formData.id || formData.eva_id || Date.now().toString();
+
+    // 2. เตรียมข้อมูล (ใส่ ID ลงไปด้วยเลย)
+    const updatedFormData = { 
+        ...formData, 
+        id: forcedId,          // บังคับส่ง ID ไป
+        eva_id: forcedId,      // ส่งเผื่อ backend key
+        status: newStatus,
+        [signTarget === 'assessor' ? 'assessorSign' : signTarget === 'hr' ? 'hrSign' : 'approverSign']: dataUrl,
+        lastUpdated: new Date().toISOString(), 
+        updatedBy: currentRole,
+        action: 'saveEvaluation'
+    };
+
     try {
         setGlobalLoading(true);
-        const savedData = await apiCall(updatedFormData);
         
-        // --- ส่วนที่แก้ไข ---
-        
-        // 1. ลองดึง ID จากทุกชื่อที่เป็นไปได้ (id หรือ eva_id)
-        const returnedId = savedData.id || savedData.eva_id; 
-        
-        // 2. ถ้าไม่มีใน savedData ให้หาจาก State เก่า (dbId หรือ formData)
-        const safeEvalId = returnedId || dbId || formData.id || formData.eva_id; 
-
-        // อัปเดต State (สำคัญ: ต้อง setDbId ด้วย safeEvalId)
-        setDbId(safeEvalId); 
-        setFormData(prev => ({ ...prev, ...savedData })); // Merge ข้อมูลใหม่
+        // 3. อัปเดต State หน้าจอก่อนเลย (เพราะเรามี ID แล้ว)
+        setDbId(forcedId);
+        setFormData(prev => ({ ...prev, ...updatedFormData }));
         setStatus(newStatus);
         setSignatureModalOpen(false);
 
-        // Debug: ดูค่า ID ใน Console (กด F12 ดูได้เลย)
-        console.log("Sending Email with ID:", safeEvalId); 
-
-        if (!safeEvalId) {
-            alert("⚠️ เตือน: ไม่พบ ID ใบประเมิน ลิงก์ในอีเมลอาจไม่ขึ้น");
-        }
-
-        // 3. ส่ง Email (ใช้ safeEvalId)
+        // 4. ส่ง Email ทันที (ใช้ forcedId ที่เราสร้างเอง ชัวร์ 100%)
+        console.log("📨 Sending Email with ID:", forcedId);
         await sendGmailNotification(
-            savedData.employeeName || formData.employeeName, 
+            formData.employeeName, // ใช้ชื่อจากฟอร์มปัจจุบัน
             status, 
             newStatus, 
-            safeEvalId, // <--- ส่ง ID ที่ถูกต้อง
+            forcedId, // <--- ID มาแน่นอน ไม่ต้องลุ้น
             appSettings
         );
 
-        // ------------------
+        // 5. บันทึกลง Google Sheet (ทำทีหลังได้ เพราะเราได้ ID แล้ว)
+        await apiCall(updatedFormData);
 
         if (autoOpenSignRole) {
             setIsComplete(true); 
