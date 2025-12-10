@@ -580,6 +580,26 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
   const [avgScore, setAvgScore] = useState(0);
 
   useEffect(() => {
+    if (initialData) {
+      console.log("Syncing Initial Data:", initialData); // Debug ดูว่าข้อมูลมาไหม
+      
+      setFormData(prev => ({
+        ...prev,
+        ...initialData,
+        ratings: initialData.ratings || {} // กัน ratings เป็น null
+      }));
+
+      setStatus(initialData.status || 'draft');
+      setDbId(initialData.id);
+      
+      // ถ้า status ไม่ใช่ draft แปลว่า Assessor เซ็นมาแล้ว
+      if (initialData.status !== 'draft') {
+        // อาจจะต้อง update logic การเปิด Signature Pad อัตโนมัติที่นี่ถ้าจำเป็น
+      }
+    }
+  }, [initialData]);
+
+  useEffect(() => {
     if (autoOpenSignRole && !signatureModalOpen) {
        const isHRTurn = autoOpenSignRole === 'hr' && status === 'pending_hr';
        const isApproverTurn = autoOpenSignRole === 'approver' && status === 'pending_approval';
@@ -1693,21 +1713,27 @@ const sendGmailNotification = async (employeeName, currentStatus, nextStatus, ev
   const emailHR = settings?.email_hr || 'burin.wo@gmail.com';
   const emailApprover = settings?.email_approver || 'burin.wo@gmail.com';
 
+  const refTime = new Date().toLocaleTimeString('th-TH').replace(/:/g, ''); 
+  const refId = `${evalId}-${refTime}`; 
+
   if (nextStatus === 'pending_hr') {
       toEmail = emailHR; 
-      subject = `[Action Required] กรุณาลงนามผลประเมินของ ${employeeName}`;
+      // ✅ เพิ่ม Ref ID ท้ายหัวข้อ
+      subject = `[Action Required] กรุณาลงนามผลประเมินของ ${employeeName} (Ref: ${refId})`; 
       messageHtml = `<h3>เรียน ${hrTitle},</h3><p>กรุณาตรวจสอบและลงนามผลการทดลองงานของ <b>${employeeName}</b></p>`;
       signRole = 'hr';
   } 
   else if (nextStatus === 'pending_approval') {
       toEmail = emailApprover; 
-      subject = `[Action Required] กรุณาอนุมัติผลประเมินของ ${employeeName}`;
+      // ✅ เพิ่ม Ref ID ท้ายหัวข้อ
+      subject = `[Action Required] กรุณาอนุมัติผลประเมินของ ${employeeName} (Ref: ${refId})`;
       messageHtml = `<h3>เรียน ${approverTitle},</h3><p>ฝ่ายบุคคลตรวจสอบเรียบร้อยแล้ว โปรดพิจารณาอนุมัติ</p>`;
       signRole = 'approver';
   } 
   else if (nextStatus === 'completed') {
-      toEmail = emailHR; // ส่งกลับหา HR เมื่อเสร็จสิ้น
-      subject = `[Completed] ผลประเมิน ${employeeName} เสร็จสมบูรณ์`;
+      toEmail = emailHR; 
+      // ✅ เพิ่ม Ref ID ท้ายหัวข้อ
+      subject = `[Completed] ผลประเมิน ${employeeName} เสร็จสมบูรณ์ (Ref: ${refId})`;
       messageHtml = `<p>การประเมินเสร็จสิ้นแล้ว</p>`;
   }
 
