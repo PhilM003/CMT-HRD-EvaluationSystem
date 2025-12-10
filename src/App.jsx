@@ -543,75 +543,88 @@ const DashboardView = ({ evaluations = [], onCreate, onEdit, onDelete, onManageE
   );
 };
 
-
+// ==========================================
+// EVALUATION FORM COMPONENT (FULL UPDATE)
+// ==========================================
 const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, onSaveComplete, autoOpenSignRole, setGlobalLoading, appSettings }) => {
+  // --- State ---
   const [status, setStatus] = useState(initialData?.status || 'draft');
   const [dbId, setDbId] = useState(initialData?.id || null);
-  const [isComplete, setIsComplete] = useState(false);
-  const isAdmin = currentRole === 'admin';
-  const canEdit = (targetRole) => {
-      if (status === 'completed' || status === 'rejected') return false;
-      if (targetRole === 'general') targetRole = 'assessor';
-      if (isAdmin && targetRole === 'assessor') return true;
-      return currentRole === targetRole;
-    };
+  const [showSuccessModal, setShowSuccessModal] = useState(false); // ✅ State สำหรับหน้าจบของ Guest
   
+  // --- Initialize Form Data ---
   const initialFormData = {
     employeeName: '', employeeId: '', position: '', section: '', department: '', startDate: '', dueProbationDate: '',
     attendFrom: '', attendTo: '',
     sickLeave: { days: '', hours: '' }, personalLeave: { days: '', hours: '' }, otherLeave: { days: '', hours: '' }, late: { times: '', mins: '' }, absence: { days: '', hours: '' },
     ratings: {},
     passProbation: false, notPassProbation: false, notPassReason: '', otherOpinion: false, otherOpinionText: '',
-    assessorSign: '', hrOpinion: '', hrSign: '', approverSign: ''
+    assessorSign: '', hrOpinion: '', hrSign: '', approverSign: '' // เก็บรูปภาพ Base64
   };
+
   const [formData, setFormData] = useState(() => {
       if (!initialData) return initialFormData;
-      return {
-          ...initialFormData, 
-          ...initialData,     
-          ratings: initialData.ratings || {} 
-      };
+      return { ...initialFormData, ...initialData, ratings: initialData.ratings || {} };
   });
-  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
-  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
-  const [signTarget, setSignTarget] = useState(null);
-  
-  const [totalScore, setTotalScore] = useState(0);
-  const [avgScore, setAvgScore] = useState(0);
 
+  // --- Sync Initial Data (แก้ปัญหา Magic Link ข้อมูลไม่ขึ้น) ---
   useEffect(() => {
     if (initialData) {
-      console.log("Syncing Initial Data:", initialData); // Debug ดูว่าข้อมูลมาไหม
-      
-      setFormData(prev => ({
-        ...prev,
-        ...initialData,
-        ratings: initialData.ratings || {} // กัน ratings เป็น null
-      }));
-
+      console.log("Syncing Initial Data:", initialData);
+      setFormData(prev => ({ ...prev, ...initialData, ratings: initialData.ratings || {} }));
       setStatus(initialData.status || 'draft');
       setDbId(initialData.id);
-      
-      // ถ้า status ไม่ใช่ draft แปลว่า Assessor เซ็นมาแล้ว
-      if (initialData.status !== 'draft') {
-        // อาจจะต้อง update logic การเปิด Signature Pad อัตโนมัติที่นี่ถ้าจำเป็น
-      }
     }
   }, [initialData]);
 
+  // --- Auto Open Signature (Optional: เปิดให้เซ็นเลยถ้าเป็น Guest แต่ไม่บังคับบันทึก) ---
   useEffect(() => {
-    if (autoOpenSignRole && !signatureModalOpen) {
+    if (autoOpenSignRole && !signatureModalOpen && status !== 'completed') {
+       // เช็คว่าเป็นคิวของ Guest คนนั้นจริงๆ ถึงจะเด้งขึ้นมา
        const isHRTurn = autoOpenSignRole === 'hr' && status === 'pending_hr';
        const isApproverTurn = autoOpenSignRole === 'approver' && status === 'pending_approval';
+       const isAssessorTurn = autoOpenSignRole === 'assessor' && (status === 'draft' || status === 'returned');
 
-       if (isHRTurn || isApproverTurn) {
-           setTimeout(() => {
-               openSignaturePad(autoOpenSignRole);
-           }, 800); 
+       if (isHRTurn || isApproverTurn || isAssessorTurn) {
+           // หน่วงเวลาเล็กน้อยให้หน้าเว็บโหลดเสร็จก่อนค่อยเด้ง
+           const timer = setTimeout(() => {
+               // openSignaturePad(autoOpenSignRole); // ⚠️ Comment ออกถ้าอยากให้ดูเอกสารก่อนค่อยกดเซ็นเอง
+           }, 800);
+           return () => clearTimeout(timer);
        }
     }
   }, [autoOpenSignRole, status]);
 
+  const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
+  const [signatureModalOpen, setSignatureModalOpen] = useState(false);
+  const [signTarget, setSignTarget] = useState(null);
+  const [totalScore, setTotalScore] = useState(0);
+  const [avgScore, setAvgScore] = useState(0);
+
+  // --- Logic 1: ความยืดหยุ่นในการแก้ไข (Permission) ---
+  const isGuest = !!autoOpenSignRole; // ตรวจสอบว่าเป็น Guest หรือไม่
+
+  const canEdit = (section) => {
+      // 1. ถ้าเป็น User หลัก (Admin/Assess) เข้าลิงก์หลัก -> แก้ได้ทุกอย่าง ยืดหยุ่นสุดๆ
+      if (!isGuest) return true; 
+
+      // 2. ถ้าเป็น Guest (Magic Link) -> แก้ได้เฉพาะส่วนของตัวเอง และต้องยังไม่เสร็จ
+      if (status === 'completed') return false;
+      
+      // Guest: Assessor
+      if (autoOpenSignRole === 'assessor') {
+         // Assessor แก้ได้หมด ยกเว้นส่วนของ HR/Approver
+         if (section === 'hr' || section === 'approver') return false;
+         return true;
+      }
+      
+      // Guest: HR หรือ Approver แก้ได้เฉพาะช่องเซ็นและช่องความเห็นของตัวเอง
+      return section === autoOpenSignRole;
+  };
+
+  const isReadOnly = (section) => !canEdit(section);
+
+  // --- Helper Calculations ---
   const evaluationTopics = [
     { id: 1, weight: 15, t: 'ปริมาณงานที่ทำสำเร็จ (Work Quantity)' },
     { id: 2, weight: 15, t: 'คุณภาพของงาน (Work Quality)' },
@@ -625,51 +638,24 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     { id: 10, weight: 5, t: 'กฎระเบียบ (Rules)' }
   ];
 
-// Score Calculation
   useEffect(() => {
     let weightedSum = 0; 
-    let rawSum = 0;      
-    let count = 0;       
-
     evaluationTopics.forEach(topic => {
       const r = formData.ratings[topic.id] || 0;
-      if(r > 0) {
-        weightedSum += (topic.weight * r);
-        rawSum += r;
-        count++;
-      }
+      if(r > 0) weightedSum += (topic.weight * r);
     });
-
     setTotalScore(weightedSum);
-    // CHANGE: เปลี่ยนจาก (rawSum / count) เป็น (weightedSum / 7) ตามคำขอ
-    setAvgScore(weightedSum / 7); // Changed from (rawSum / count) to (weightedSum / 7) as requested.
+    setAvgScore(weightedSum / 7);
   }, [formData.ratings]);
 
-  const handleNameSearch = (e) => {
-    const value = e.target.value;
-    setFormData(prev => ({ ...prev, employeeName: value }));
-    setShowEmployeeDropdown(true); 
-  };
-
+  // --- Input Handlers ---
+  const handleNameSearch = (e) => { setFormData(prev => ({ ...prev, employeeName: e.target.value })); setShowEmployeeDropdown(true); };
   const selectEmployee = (emp) => {
-    setFormData(prev => ({
-      ...prev,
-      employeeName: emp.name, 
-      employeeId: emp.id, 
-      position: emp.position, 
-      section: emp.section, 
-      department: emp.department, 
-      startDate: emp.startDate, 
-      dueProbationDate: emp.dueProbation 
-    }));
+    setFormData(prev => ({ ...prev, employeeName: emp.name, employeeId: emp.id, position: emp.position, section: emp.section, department: emp.department, startDate: emp.startDate, dueProbationDate: emp.dueProbation }));
     setShowEmployeeDropdown(false);
   };
-
   const handleInputChange = (e) => {
-    const { name } = e.target;
-    if (name !== 'employeeName' && currentRole !== 'admin' && currentRole !== 'assessor') return; 
-
-    const { value, type, checked } = e.target;
+    const { name, value, type, checked } = e.target;
     if (name.includes('.')) {
       const [parent, child] = name.split('.');
       setFormData(prev => ({ ...prev, [parent]: { ...prev[parent], [child]: value } }));
@@ -677,235 +663,159 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
       setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     }
   };
-
   const handleNestedChange = (category, field, value) => {
-    if (isReadOnly('general')) return; // ป้องกันการแก้ไขถ้าอยู่ในโหมด Read Only
-
-    setFormData(prev => ({
-        ...prev,
-        [category]: {
-            ...prev[category],
-            [field]: value
-        }
-    }));
+    if (!canEdit('general')) return;
+    setFormData(prev => ({ ...prev, [category]: { ...prev[category], [field]: value } }));
   };
-
   const handleRatingChange = (topicId, score) => {
     if (!canEdit('general')) return;
     setFormData(prev => ({ ...prev, ratings: { ...prev.ratings, [topicId]: score } }));
   };
-
   const handleOpinionChange = (type) => {
     if (!canEdit('general')) return;
-    setFormData(prev => ({
-      ...prev,
-      passProbation: type === 'pass' ? !prev.passProbation : false,
-      notPassProbation: type === 'notPass' ? !prev.notPassProbation : false,
-      otherOpinion: type === 'other' ? !prev.otherOpinion : false
-    }));
+    setFormData(prev => ({ ...prev, passProbation: type === 'pass' ? !prev.passProbation : false, notPassProbation: type === 'notPass' ? !prev.notPassProbation : false, otherOpinion: type === 'other' ? !prev.otherOpinion : false }));
   };
-
   const handleHROpinionChange = (e) => {
     if (!canEdit('hr')) return;
     setFormData(prev => ({ ...prev, hrOpinion: e.target.value }));
   };
-
   const handleApproverOpinionChange = (e) => {
     if (!canEdit('approver')) return;
     setFormData(prev => ({ ...prev, approverOpinion: e.target.value }));
   };
+  
+  // --- Signature Logic ---
+  const openSignaturePad = (target) => {
+    if (!canEdit(target)) return alert("⛔ คุณไม่มีสิทธิ์แก้ไขช่องนี้");
+    setSignTarget(target);
+    setSignatureModalOpen(true);
+  };
 
-  const isReadOnly = (section) => !canEdit(section);
-  const isEmployeeInfoEditable = () => currentRole === 'admin';
+  // ✅ Logic 2: กด "ยืนยัน" ใน Modal -> แค่เก็บรูปลง State หน้าจอ (ยังไม่บันทึกชีท)
+  const handleConfirmSignature = (dataUrl) => {
+     setFormData(prev => ({
+         ...prev,
+         [signTarget === 'assessor' ? 'assessorSign' : signTarget === 'hr' ? 'hrSign' : 'approverSign']: dataUrl
+     }));
+     setSignatureModalOpen(false);
+  };
 
   const handleResetStatus = () => {
     if (!confirm("⚠️ ต้องการรีเซ็ตสถานะกลับเป็น Draft หรือไม่?")) return;
     setStatus('draft');
     setFormData(prev => ({ ...prev, assessorSign: '', hrSign: '', approverSign: '' }));
   };
-  
-  const openSignaturePad = (target) => {
-    if (target === 'assessor' && isAdmin) {
-        setSignTarget(target);
-        setSignatureModalOpen(true);
-        return;
-    }
-    if (currentRole !== target) return alert("⛔ คุณไม่มีสิทธิ์เซ็นช่องนี้");
-    if (target === 'hr' && status === 'draft') return alert("⚠️ ต้องให้ผู้ประเมินส่งเรื่องมาก่อน");
-    if (target === 'approver' && status !== 'pending_approval') return alert("⚠️ ต้องผ่านการตรวจสอบจาก HR ก่อน");
-    setSignTarget(target);
-    setSignatureModalOpen(true);
-  };
 
-  const saveToDB = async () => {
+  // ✅ Logic 3: ปุ่ม "บันทึกข้อมูล" (Save to Sheet + Email + Redirect)
+  const handleMainSave = async () => {
     if (!formData.employeeName) return alert("❌ กรุณาระบุชื่อพนักงาน");
-    
-    setGlobalLoading(true);
-    const payload = { 
-        ...formData, 
-        status, 
-        lastUpdated: new Date().toISOString(), 
-        updatedBy: currentRole,
-        action: 'saveEvaluation' 
-    };
-    
-    try {
-      const savedData = await apiCall(payload);
-      
-      setDbId(savedData.id); 
-      alert("✅ บันทึกข้อมูลเรียบร้อย");
-      onSaveComplete();
-    } catch (error) { 
-        alert("❌ บันทึกไม่สำเร็จ"); 
-    } finally { 
-        setGlobalLoading(false);
-    }
-  };
 
-// 📂 ไฟล์ App.jsx
-// 📍 ค้นหาฟังก์ชัน handleSaveSignature แล้วแทนที่ด้วยโค้ดชุดนี้ทั้งหมดครับ
-
-  const handleSaveSignature = async (dataUrl) => { 
-    // 1. กำหนดสถานะใหม่
+    // กำหนดสถานะใหม่ (คำนวณจากลายเซ็นที่มีอยู่จริงใน State)
     let newStatus = status;
-    if (signTarget === 'assessor') newStatus = 'pending_hr';
-    if (signTarget === 'hr') newStatus = 'pending_approval';
-    if (signTarget === 'approver') newStatus = 'completed';
     
-    // =======================================================
-    // 🟢 จุดแก้ไข: สร้าง ID ที่หน้าเว็บทันที (ไม่ต้องรอ Backend)
-    // =======================================================
-    // ถ้ามี ID เดิมใช้อันเดิม ถ้าไม่มีให้สร้างใหม่ด้วยเวลาปัจจุบัน
-    const forcedId = dbId || formData.id || formData.eva_id || Date.now().toString();
+    // Logic การเปลี่ยนสถานะตามลายเซ็น (ใช้ได้ทั้ง Guest และ User หลัก)
+    if (formData.approverSign) {
+        newStatus = 'completed';
+    } else if (formData.hrSign) {
+        newStatus = 'pending_approval';
+    } else if (formData.assessorSign) {
+        newStatus = 'pending_hr';
+    } else {
+        newStatus = 'draft';
+    }
 
-    // 2. เตรียมข้อมูล (ใส่ ID ลงไปด้วยเลย)
-    const updatedFormData = { 
-        ...formData, 
-        id: forcedId,          // บังคับส่ง ID ไป
-        eva_id: forcedId,      // ส่งเผื่อ backend key
+    setGlobalLoading(true);
+    
+    // 1. สร้าง ID (Frontend Force)
+    const forcedId = dbId || formData.id || formData.eva_id || Date.now().toString();
+    const payload = {
+        ...formData,
+        id: forcedId,
+        eva_id: forcedId,
         status: newStatus,
-        [signTarget === 'assessor' ? 'assessorSign' : signTarget === 'hr' ? 'hrSign' : 'approverSign']: dataUrl,
-        lastUpdated: new Date().toISOString(), 
-        updatedBy: currentRole,
+        lastUpdated: new Date().toISOString(),
+        updatedBy: isGuest ? `${autoOpenSignRole} (Guest)` : currentRole,
         action: 'saveEvaluation'
     };
 
     try {
-        setGlobalLoading(true);
+        // 2. บันทึกลง Sheet
+        await apiCall(payload);
         
-        // 3. อัปเดต State หน้าจอก่อนเลย (เพราะเรามี ID แล้ว)
+        // 3. อัปเดต State Local
         setDbId(forcedId);
-        setFormData(prev => ({ ...prev, ...updatedFormData }));
         setStatus(newStatus);
-        setSignatureModalOpen(false);
+        setFormData(payload);
 
-        // 4. ส่ง Email ทันที (ใช้ forcedId ที่เราสร้างเอง ชัวร์ 100%)
-        console.log("📨 Sending Email with ID:", forcedId);
-        await sendGmailNotification(
-            formData.employeeName, // ใช้ชื่อจากฟอร์มปัจจุบัน
-            status, 
-            newStatus, 
-            forcedId, // <--- ID มาแน่นอน ไม่ต้องลุ้น
-            appSettings
-        );
-
-        // 5. บันทึกลง Google Sheet (ทำทีหลังได้ เพราะเราได้ ID แล้ว)
-        await apiCall(updatedFormData);
-
-        if (autoOpenSignRole) {
-            setIsComplete(true); 
-        } else {
-            alert("✅ บันทึกข้อมูลและส่งอีเมลเรียบร้อยแล้ว");
+        // 4. ส่ง Email (ถ้าสถานะเปลี่ยน หรือ เป็น Guest ที่เข้ามาเซ็น)
+        // Guest ควรสั่งส่งเมลเสมอเพื่อแจ้ง Step ถัดไป
+        if (newStatus !== status || isGuest) {
+            console.log("📨 Sending Email...");
+            await sendGmailNotification(formData.employeeName, status, newStatus, forcedId, appSettings);
         }
 
-    } catch (error) {
-        console.error(error);
-        alert("เกิดข้อผิดพลาด: " + error.message);
+        // ✅ Logic 4: แยกทางจบ (Redirect vs Popup)
+        if (isGuest) {
+             // ถ้าเป็น Guest -> เด้งหน้าขอบคุณ
+             setShowSuccessModal(true);
+        } else {
+             // ถ้าเป็น User หลัก -> กลับ Dashboard
+             alert("✅ บันทึกข้อมูลเรียบร้อย");
+             onSaveComplete(); 
+        }
+
+    } catch (e) {
+        console.error(e);
+        alert("❌ เกิดข้อผิดพลาดในการบันทึก: " + e.message);
     } finally {
         setGlobalLoading(false);
     }
   };
 
-  if (isComplete) {
-    return (
-      <div className="flex justify-between items-center mb-6 print:hidden">
-        
-        {/* ✅ ปุ่มย้อนกลับ หรือ แสดงสถานะ (ตาม Role) */}
-        {isAdmin ? (
-            <button 
-                onClick={onBack} 
-                className="flex items-center text-neutral-medium hover:text-primary-navy transition-colors font-bold px-3 py-2 rounded-lg hover:bg-secondary-cream/50"
-            >
-                <ArrowLeft className="mr-2" size={20}/> กลับหน้า Dashboard
-            </button>
-        ) : (
-            <div className="flex items-center gap-2 text-neutral-medium font-bold px-3 py-2">
-                <User size={20}/> มุมมองผู้ตรวจสอบ ({currentRole.toUpperCase()})
-            </div>
-        )}
-
-        {/* ✅ กลุ่มปุ่มขวา: Status Badge + Print + Save + Reset */}
-        <div className="flex items-center gap-3">
-            <StatusBadge status={status} size="lg" />
-            
-            {/* ปุ่ม Print */}
-            <button onClick={() => handlePrint(formData, totalScore, avgScore, appSettings)} className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-gray-700 transition-all">
-                <Printer size={18}/> พิมพ์
-            </button>
-
-            {/* ✅ [เพิ่ม] ปุ่ม Save: แสดงเฉพาะ Admin หรือคนที่ถึงคิวแก้ไข */}
-            {(isAdmin || canEdit(currentRole)) && (
-                <button 
-                    onClick={() => handleSaveToDB()} 
-                    className="flex items-center gap-2 bg-secondary-darkgold text-white px-4 py-2 rounded-lg font-bold shadow-md hover:bg-yellow-600 transition-all"
-                >
-                    <Save size={18}/> บันทึก
-                </button>
-            )}
-
-            {/* ปุ่ม Reset Status (เฉพาะ Admin) */}
-            {(status !== 'draft' && isAdmin) && (
-                <button onClick={handleResetStatus} className="flex items-center gap-2 bg-white text-red-600 border border-red-200 hover:bg-red-50 px-4 py-2 rounded-lg font-bold shadow-sm transition-all" title="Reset กลับไปเป็น Draft">
-                    <RotateCcw size={18}/> Reset
-                </button>
-            )}
+  // --- Render: Success Page for Guest ---
+  if (showSuccessModal) {
+      return (
+        <div className="fixed inset-0 bg-white z-[60] flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
+           <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-xl ring-8 ring-green-50">
+              <CheckCircle size={64} className="text-green-600" />
+           </div>
+           <h1 className="text-3xl font-extrabold text-primary-navy mb-4 text-center">ได้รับการรับรองจากท่านเรียบร้อย</h1>
+           <p className="text-neutral-medium mb-10 text-center text-lg max-w-md">ขอบคุณสำหรับความร่วมมือ ข้อมูลของท่านถูกบันทึกเข้าสู่ระบบอย่างสมบูรณ์แล้ว</p>
+           
+           <button 
+             onClick={() => { window.location.href = 'https://www.google.com'; }} // หรือปิด Tab
+             className="px-10 py-4 bg-primary-navy text-white hover:bg-accent-royalblue font-bold rounded-2xl transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 flex items-center gap-2"
+           >
+             <LogOut size={20}/> ออกจากหน้านี้
+           </button>
         </div>
-      </div>
-    );
+      );
   }
 
-  // Render Form
-return (
-    <div className="max-w-5xl mx-auto p-4 md:p-8 animate-in slide-in-from-bottom-4 duration-500">
+  // --- Render: Main Form ---
+  return (
+    <div className={`max-w-5xl mx-auto p-4 md:p-8 animate-in slide-in-from-bottom-4 duration-500 pb-24 ${isGuest ? 'bg-white min-h-screen' : ''}`}>
       
       {/* Header Controls */}
       <div className="flex justify-between items-center mb-6 print:hidden">
-        
-        {/* ✅ 5. ซ่อนปุ่ม "กลับหน้า Dashboard" ถ้าไม่ใช่ Admin */}
-        {isAdmin ? (
-            <button 
-                onClick={onBack} 
-                className="flex items-center text-neutral-medium hover:text-primary-navy transition-colors font-bold px-3 py-2 rounded-lg hover:bg-secondary-cream/50"
-            >
+        {/* ปุ่มย้อนกลับ (แสดงเฉพาะ User หลัก) */}
+        {!isGuest ? (
+            <button onClick={onBack} className="flex items-center text-neutral-medium hover:text-primary-navy transition-colors font-bold px-3 py-2 rounded-lg hover:bg-secondary-cream/50">
                 <ArrowLeft className="mr-2" size={20}/> กลับหน้า Dashboard
             </button>
         ) : (
-            <div className="flex items-center gap-2 text-neutral-medium font-bold px-3 py-2">
-                <User size={20}/> มุมมองผู้ตรวจสอบ ({currentRole.toUpperCase()})
+            <div className="flex items-center gap-2 text-neutral-medium font-bold px-3 py-2 bg-gray-100 rounded-lg">
+               <div className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse"></div> 
+               Guest Access: {autoOpenSignRole?.toUpperCase()}
             </div>
         )}
-
+        
         <div className="flex items-center gap-3">
-            <StatusBadge status={status} size="lg" />
-            
-            <button onClick={() => handlePrint(formData, totalScore, avgScore, appSettings)} className="flex items-center gap-2 bg-secondary-darkgold text-white px-4 py-2 rounded-lg font-bold shadow-sm hover:bg-yellow-600 transition-all">
-                <Printer size={18}/> พิมพ์ (Print)
-            </button>
-
-            {/* ปุ่ม Reset Status (เฉพาะ Admin) */}
-            {(status !== 'draft' && isAdmin) && (
-                <button onClick={handleResetStatus} className="flex items-center gap-2 bg-white text-secondary-darkgold border border-secondary-darkgold hover:bg-secondary-cream px-4 py-2 rounded-lg font-bold shadow-sm transition-all">
-                    <RotateCcw size={18}/> Reset Status
+             <StatusBadge status={status} size="lg" />
+             {/* ปุ่ม Reset Status (เฉพาะ Admin) */}
+            {(status !== 'draft' && currentRole === 'admin') && (
+                <button onClick={handleResetStatus} className="flex items-center gap-2 bg-white text-secondary-darkgold border border-secondary-darkgold hover:bg-secondary-cream px-4 py-2 rounded-lg font-bold shadow-sm transition-all text-xs md:text-sm">
+                    <RotateCcw size={16}/> Reset
                 </button>
             )}
         </div>
@@ -915,9 +825,9 @@ return (
           <h1 className="text-3xl font-extrabold text-primary-navy tracking-tight drop-shadow-sm">แบบประเมินผลการทดลองงาน</h1>
           <p className="text-neutral-medium text-lg mt-1 font-medium">Probation Evaluation Form</p>
       </div>
-      
-      {/* 1. Employee Info Section */}
-      <div className="bg-white border border-secondary-silver/50 rounded-2xl p-8 relative shadow-lg hover:shadow-xl transition-shadow duration-300">
+
+      {/* --- Section 1: Employee Info --- */}
+      <div className="bg-white border border-secondary-silver/50 rounded-2xl p-8 relative shadow-lg mb-8 mt-6">
           <div className="absolute top-0 left-0 w-1.5 h-full bg-primary-gold rounded-l-2xl"></div>
           <h3 className="font-bold text-xl mb-6 text-primary-navy flex items-center border-b border-secondary-silver/30 pb-3">
              <div className="p-2 bg-secondary-cream rounded-lg mr-3 text-primary-gold shadow-sm"><User size={24}/></div>
@@ -926,424 +836,215 @@ return (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
              <div className="relative">
                <label className="text-xs text-neutral-medium font-bold mb-2 block uppercase tracking-wider">ชื่อพนักงาน (Name)</label>
-               <div className="relative">
-                 <input 
-                    type="text" 
-                    name="employeeName" 
-                    value={formData.employeeName} 
-                    onChange={handleNameSearch} 
-                    onFocus={()=>{if(employeeList.length>0)setShowEmployeeDropdown(true)}} 
-                    onBlur={()=>{setTimeout(()=>setShowEmployeeDropdown(false),200)}}
-                    disabled={isReadOnly('general')} 
-                    className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pl-10 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none text-neutral-dark placeholder-neutral-medium/50 transition-all font-medium shadow-sm" 
-                    placeholder="พิมพ์ชื่อเพื่อค้นหา หรือคลิกเพื่อเลือก..."
-                    autoComplete="off"
-                 />
-                 <Search className="absolute left-3.5 top-3.5 text-secondary-silver w-5 h-5" />
-               </div>
+               <input 
+                  type="text" name="employeeName" value={formData.employeeName} 
+                  onChange={handleNameSearch} 
+                  onFocus={()=>{if(employeeList.length>0)setShowEmployeeDropdown(true)}} 
+                  onBlur={()=>{setTimeout(()=>setShowEmployeeDropdown(false),200)}}
+                  disabled={isReadOnly('general')}
+                  className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none font-medium" 
+                  placeholder="พิมพ์ชื่อ..."
+               />
+               {/* Dropdown Logic */}
                {showEmployeeDropdown && (
-                 <div className="absolute z-10 w-full bg-white border border-secondary-silver shadow-2xl max-h-60 overflow-auto mt-2 rounded-xl animate-in fade-in slide-in-from-top-2">
+                 <div className="absolute z-10 w-full bg-white border border-secondary-silver shadow-2xl max-h-60 overflow-auto mt-2 rounded-xl">
                    {employeeList.filter(e=>(e.name || "").toLowerCase().includes(formData.employeeName.toLowerCase())).map(emp=>(
-                     <div 
-                        key={emp.id} 
-                        onMouseDown={(e) => { e.preventDefault(); selectEmployee(emp); }} 
-                        className="p-4 hover:bg-secondary-cream/50 cursor-pointer border-b border-secondary-silver/30 last:border-0 text-sm flex justify-between items-center group transition-colors"
-                     >
-                        <span className="font-bold text-neutral-dark group-hover:text-primary-navy text-base">{emp.name}</span> 
-                        <span className="text-xs font-bold text-primary-navy bg-accent-sand/30 px-2.5 py-1 rounded-md">{emp.position}</span>
+                     <div key={emp.id} onMouseDown={(e) => { e.preventDefault(); selectEmployee(emp); }} className="p-4 hover:bg-secondary-cream/50 cursor-pointer border-b border-secondary-silver/30">
+                        <span className="font-bold">{emp.name}</span>
                      </div>
                    ))}
-                   {employeeList?.length === 0 && <div className="p-4 text-center text-neutral-medium text-xs">ไม่พบข้อมูล (ต้อง Sync ก่อน)</div>}
                  </div>
                )}
              </div>
+             {/* Fields อื่นๆ */}
              <InputField label="รหัส (ID)" value={formData.employeeId} disabled/>
              <InputField label="ตำแหน่ง (Position)" value={formData.position} disabled/>
              <InputField label="แผนก (Department)" value={formData.department} disabled/>
-             <InputField type="text" label="วันเริ่มงาน (Start Date)" name="startDate" value={formData.startDate} onChange={handleInputChange} disabled={!isEmployeeInfoEditable()} placeholder="DD/MM/YYYY"/>
-             <InputField type="text" label="ครบกำหนด (Due Date)" name="dueProbationDate" value={formData.dueProbationDate} onChange={handleInputChange} disabled={!isEmployeeInfoEditable()} placeholder="DD/MM/YYYY"/>
-             <div className="col-span-1 md:col-span-2 mt-4 pt-6 border-t border-secondary-silver/30">
-                <h4 className="font-bold text-lg text-primary-navy mb-4 flex items-center">
-                    <span className="w-1.5 h-6 bg-primary-gold rounded-full mr-2"></span>
-                    ข้อมูลสถิติการทำงาน (Time Attendance)
-                </h4>
-                {/* ช่วงวันที่เก็บสถิติ */}
-                <div className="md:col-span-2 lg:col-span-3 mb-4">
-                    <label className="text-xs text-neutral-medium font-bold mb-2 block uppercase tracking-wider">
-                        ช่วงวันที่เก็บสถิติ (Statistic Period)
-                    </label>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="relative">
-                            <span className="absolute top-2 left-3 text-xs text-neutral-medium">ตั้งแต่วันที่</span>
-                            <input 
-                                type="date"
-                                value={formData.attendFrom || ""}
-                                onChange={(e) => setFormData({ ...formData, attendFrom: e.target.value })}
-                                className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pt-6 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none font-medium"
-                            />
-                        </div>
-                        <div className="relative">
-                            <span className="absolute top-2 left-3 text-xs text-neutral-medium">ถึงวันที่</span>
-                            <input 
-                                type="date"
-                                value={formData.attendTo || ""}
-                                onChange={(e) => setFormData({ ...formData, attendTo: e.target.value })}
-                                className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pt-6 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none font-medium"
-                            />
-                        </div>
-                    </div>
-                </div>
-    
-                
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {/* 1. ลาป่วย (Sick Leave) */}
-                    <div>
-                        <label className="text-xs text-neutral-medium font-bold mb-2 block uppercase tracking-wider">ลาป่วย (Sick Leave)</label>
-                        <div className="flex gap-2">
-                            <div className="relative flex-1">
-                                <input 
-                                    type="number" 
-                                    placeholder="0"
-                                    value={formData.sickLeave?.days || ''}
-                                    onChange={(e) => handleNestedChange('sickLeave', 'days', e.target.value)}
-                                    className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pr-8 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none text-center font-medium"
-                                />
-                                <span className="absolute right-3 top-3.5 text-xs text-neutral-medium">วัน</span>
-                            </div>
-                            <div className="relative flex-1">
-                                <input 
-                                    type="number" 
-                                    placeholder="0"
-                                    value={formData.sickLeave?.hours || ''}
-                                    onChange={(e) => handleNestedChange('sickLeave', 'hours', e.target.value)}
-                                    className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pr-8 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none text-center font-medium"
-                                />
-                                <span className="absolute right-3 top-3.5 text-xs text-neutral-medium">ชม.</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 2. ลากิจ (Personal Leave) */}
-                    <div>
-                        <label className="text-xs text-neutral-medium font-bold mb-2 block uppercase tracking-wider">ลากิจ (Personal Leave)</label>
-                        <div className="flex gap-2">
-                            <div className="relative flex-1">
-                                <input 
-                                    type="number" 
-                                    placeholder="0"
-                                    value={formData.personalLeave?.days || ''}
-                                    onChange={(e) => handleNestedChange('personalLeave', 'days', e.target.value)}
-                                    className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pr-8 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none text-center font-medium"
-                                />
-                                <span className="absolute right-3 top-3.5 text-xs text-neutral-medium">วัน</span>
-                            </div>
-                            <div className="relative flex-1">
-                                <input 
-                                    type="number" 
-                                    placeholder="0"
-                                    value={formData.personalLeave?.hours || ''}
-                                    onChange={(e) => handleNestedChange('personalLeave', 'hours', e.target.value)}
-                                    className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pr-8 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none text-center font-medium"
-                                />
-                                <span className="absolute right-3 top-3.5 text-xs text-neutral-medium">ชม.</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 3. ลาอื่นๆ (Other Leave) */}
-                    <div>
-                        <label className="text-xs text-neutral-medium font-bold mb-2 block uppercase tracking-wider">ลาอื่นๆ (Other Leave)</label>
-                        <div className="flex gap-2">
-                            <div className="relative flex-1">
-                                <input 
-                                    type="number" 
-                                    placeholder="0"
-                                    value={formData.otherLeave?.days || ''}
-                                    onChange={(e) => handleNestedChange('otherLeave', 'days', e.target.value)}
-                                    className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pr-8 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none text-center font-medium"
-                                />
-                                <span className="absolute right-3 top-3.5 text-xs text-neutral-medium">วัน</span>
-                            </div>
-                            <div className="relative flex-1">
-                                <input 
-                                    type="number" 
-                                    placeholder="0"
-                                    value={formData.otherLeave?.hours || ''}
-                                    onChange={(e) => handleNestedChange('otherLeave', 'hours', e.target.value)}
-                                    className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pr-8 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none text-center font-medium"
-                                />
-                                <span className="absolute right-3 top-3.5 text-xs text-neutral-medium">ชม.</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 4. มาสาย (Late) - เพิ่มใหม่ตามที่ขอ */}
-                    <div>
-                        <label className="text-xs text-red-500 font-bold mb-2 block uppercase tracking-wider">มาสาย (Late)</label>
-                        <div className="flex gap-2">
-                            <div className="relative flex-1">
-                                <input 
-                                    type="number" 
-                                    placeholder="0"
-                                    value={formData.late?.times || ''}
-                                    onChange={(e) => handleNestedChange('late', 'times', e.target.value)}
-                                    className="w-full border-2 border-red-200 bg-red-50/30 rounded-xl p-3 pr-10 focus:ring-4 focus:ring-red-100 focus:border-red-400 outline-none text-center font-medium text-red-600"
-                                />
-                                <span className="absolute right-3 top-3.5 text-xs text-red-400">ครั้ง</span>
-                            </div>
-                            <div className="relative flex-1">
-                                <input 
-                                    type="number" 
-                                    placeholder="0"
-                                    value={formData.late?.mins || ''}
-                                    onChange={(e) => handleNestedChange('late', 'mins', e.target.value)}
-                                    className="w-full border-2 border-red-200 bg-red-50/30 rounded-xl p-3 pr-10 focus:ring-4 focus:ring-red-100 focus:border-red-400 outline-none text-center font-medium text-red-600"
-                                />
-                                <span className="absolute right-3 top-3.5 text-xs text-red-400">นาที</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    {/* 5. ขาดงาน (Absence) - เพิ่มใหม่ตามที่ขอ */}
-                    <div>
-                        <label className="text-xs text-red-500 font-bold mb-2 block uppercase tracking-wider">ขาดงาน (Absence)</label>
-                        <div className="flex gap-2">
-                            <div className="relative flex-1">
-                                <input 
-                                    type="number" 
-                                    placeholder="0"
-                                    value={formData.absence?.days || ''}
-                                    onChange={(e) => handleNestedChange('absence', 'days', e.target.value)}
-                                    className="w-full border-2 border-red-200 bg-red-50/30 rounded-xl p-3 pr-8 focus:ring-4 focus:ring-red-100 focus:border-red-400 outline-none text-center font-medium text-red-600"
-                                />
-                                <span className="absolute right-3 top-3.5 text-xs text-red-400">วัน</span>
-                            </div>
-                            <div className="relative flex-1">
-                                <input 
-                                    type="number" 
-                                    placeholder="0"
-                                    value={formData.absence?.hours || ''}
-                                    onChange={(e) => handleNestedChange('absence', 'hours', e.target.value)}
-                                    className="w-full border-2 border-red-200 bg-red-50/30 rounded-xl p-3 pr-8 focus:ring-4 focus:ring-red-100 focus:border-red-400 outline-none text-center font-medium text-red-600"
-                                />
-                                <span className="absolute right-3 top-3.5 text-xs text-red-400">ชม.</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-              </div>
-          </div>
-          {isReadOnly('general') && <LockOverlay/>}
-      </div>
-
-      {/* 2. Evaluation Section */}
-      <div className="bg-white border border-secondary-silver/50 rounded-2xl p-8 relative shadow-lg hover:shadow-xl transition-shadow duration-300">
-          <div className="absolute top-0 left-0 w-1.5 h-full bg-primary-navy rounded-l-2xl"></div>
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 border-b border-secondary-silver/30 pb-4 gap-4">
-             <h3 className="font-bold text-xl text-primary-navy flex items-center">
-                <div className="p-2 bg-secondary-cream rounded-lg mr-3 text-primary-navy shadow-sm"><ClipboardList size={24}/></div>
-                การประเมินผล (Evaluation)
-             </h3>
-             <div className="flex gap-2 text-xs font-bold">
-               <span className="px-3 py-1 bg-red-100 text-red-600 rounded-full border border-red-200">1-2: น้อย</span>
-               <span className="px-3 py-1 bg-secondary-cream text-secondary-darkgold rounded-full border border-secondary-darkgold/20">3-4: ปานกลาง</span>
-               <span className="px-3 py-1 bg-primary-navy text-white rounded-full shadow-sm">5-7: ดีมาก</span>
-             </div>
-          </div>
-          
-          <div className="space-y-3">
-             {evaluationTopics.map((topic, index) => (
-               <div key={topic.id} className={`p-5 rounded-xl border transition-all duration-200 ${index % 2 === 0 ? 'bg-white' : 'bg-secondary-cream/20'} hover:border-primary-gold/50 hover:shadow-md border-secondary-silver/30`}>
-                  <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="font-bold text-primary-gold text-lg bg-primary-gold/10 px-2 rounded-md">{topic.id}.</span>
-                        <p className="font-bold text-neutral-dark text-base">{topic.t}</p>
-                      </div>
-                      <p className="text-xs text-neutral-medium pl-9">น้ำหนักคะแนน (Weight): <span className="font-bold text-primary-navy bg-secondary-cream px-1.5 rounded">{topic.weight}</span></p>
-                    </div>
-                    
-                    <div className="flex gap-1.5">
-                      {[1, 2, 3, 4, 5, 6, 7].map((num) => {
-                        const isSelected = formData.ratings[topic.id] === num;
-                        let colorClass = "hover:bg-gray-100 border-gray-200 text-gray-400"; 
-                        if (isSelected) {
-                           if (num <= 2) colorClass = "bg-red-500 border-red-500 text-white shadow-md ring-2 ring-red-200";
-                           else if (num <= 4) colorClass = "bg-secondary-darkgold border-secondary-darkgold text-white shadow-md ring-2 ring-yellow-100";
-                           else colorClass = "bg-primary-navy border-primary-navy text-white shadow-md ring-2 ring-blue-100";
-                        }
-                        return (
-                          <button 
-                            key={num} 
-                            onClick={() => handleRatingChange(topic.id, num)} 
-                            disabled={isReadOnly('general')} 
-                            className={`w-10 h-10 rounded-lg text-sm font-bold border transition-all duration-200 ${colorClass} ${isSelected ? 'scale-110 z-10' : 'scale-100'}`}
-                          >
-                            {num}
-                          </button>
-                        );
-                      })}
-                    </div>
-                    
-                    <div className="w-20 text-right hidden md:block">
-                        <span className={`text-sm font-bold px-3 py-1.5 rounded-lg border ${formData.ratings[topic.id] ? 'bg-secondary-cream text-primary-navy border-primary-gold' : 'bg-gray-50 text-gray-300 border-gray-100'}`}>
-                          {formData.ratings[topic.id] ? (topic.weight * formData.ratings[topic.id]).toFixed(2) : '-'}
-                        </span>
-                    </div>
-                  </div>
-               </div>
-             ))}
-          </div>
-          
-          {/* Total Score Section */}
-          <div className="mt-8 bg-primary-navy rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
-             <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
-             <div className="absolute bottom-0 left-0 w-32 h-32 bg-primary-gold/20 rounded-full -ml-10 -mb-10 blur-2xl"></div>
+             <InputField label="วันเริ่มงาน" value={formData.startDate} name="startDate" onChange={handleInputChange} disabled={isReadOnly('general')}/>
+             <InputField label="วันครบกำหนด" value={formData.dueProbationDate} name="dueProbationDate" onChange={handleInputChange} disabled={isReadOnly('general')}/>
              
-             <div className="relative z-10 grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
-                <div className="flex items-center gap-5 border-r border-white/10 pr-8">
-                   <div className="p-4 bg-white/10 rounded-2xl backdrop-blur-sm shadow-inner"><Calculator size={32} className="text-primary-gold"/></div>
-                   <div>
-                      <p className="text-secondary-silver text-xs font-bold uppercase tracking-widest mb-1 opacity-80">คะแนนรวม (Total Score)</p>
-                      <div className="flex items-baseline gap-2">
-                         <span className="text-5xl font-black tracking-tight drop-shadow-md">{totalScore.toFixed(2)}</span>
-                         <span className="text-xl text-secondary-silver font-medium">/ 700</span>
-                      </div>
-                   </div>
-                </div>
-                <div className="flex items-center gap-5 pl-4">
-                   <div>
-                      <p className="text-secondary-silver text-xs font-bold uppercase tracking-widest mb-1 opacity-80">คะแนนเฉลี่ย (Mean Rating)</p>
-                      <div className="flex items-baseline gap-3">
-                         <span className="text-4xl font-bold text-primary-gold drop-shadow-md">{avgScore.toFixed(2)}</span>
-                         <span className="text-sm bg-white/10 px-2 py-1 rounded text-secondary-silver border border-white/10">เต็ม 100.00</span>
-                      </div>
-                   </div>
-                </div>
+             {/* Statistic Period */}
+             <div className="md:col-span-2 mt-4">
+                 <label className="text-xs text-neutral-medium font-bold mb-2 block uppercase tracking-wider">ช่วงวันที่เก็บสถิติ</label>
+                 <div className="flex gap-4">
+                     <div className="flex-1"><InputField type="date" value={formData.attendFrom} name="attendFrom" onChange={handleInputChange} disabled={isReadOnly('general')}/></div>
+                     <div className="flex-1"><InputField type="date" value={formData.attendTo} name="attendTo" onChange={handleInputChange} disabled={isReadOnly('general')}/></div>
+                 </div>
              </div>
           </div>
 
-          {isReadOnly('general') && <LockOverlay/>}
+          {/* Time Attendance Section */}
+          <div className="mt-8 pt-6 border-t border-secondary-silver/30">
+             <h4 className="font-bold text-lg text-primary-navy mb-4">ข้อมูลสถิติการทำงาน</h4>
+             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <LeaveInput label="ลาป่วย" name="sickLeave" data={formData.sickLeave} onChange={handleNestedChange} disabled={isReadOnly('general')}/>
+                <LeaveInput label="ลากิจ" name="personalLeave" data={formData.personalLeave} onChange={handleNestedChange} disabled={isReadOnly('general')}/>
+                <LeaveInput label="ลาอื่นๆ" name="otherLeave" data={formData.otherLeave} onChange={handleNestedChange} disabled={isReadOnly('general')}/>
+                <LeaveInput label="มาสาย (ครั้ง/นาที)" name="late" data={formData.late} onChange={handleNestedChange} disabled={isReadOnly('general')} isLate/>
+                <LeaveInput label="ขาดงาน" name="absence" data={formData.absence} onChange={handleNestedChange} disabled={isReadOnly('general')} isAbsence/>
+             </div>
+          </div>
       </div>
 
-      {/* 3. Summary Section */}
-      <div className="bg-white border border-secondary-silver/50 rounded-2xl p-8 relative shadow-lg hover:shadow-xl transition-shadow duration-300">
-         <div className="absolute top-0 left-0 w-1.5 h-full bg-green-600 rounded-l-2xl"></div>
-         <h3 className="font-bold text-xl mb-6 text-primary-navy flex items-center border-b border-secondary-silver/30 pb-3">
-            <div className="p-2 bg-secondary-cream rounded-lg mr-3 text-green-600 shadow-sm"><CheckCircle size={24}/></div>
-            สรุปผล (Summary)
+      {/* --- Section 2: Evaluation --- */}
+      <div className="bg-white border border-secondary-silver/50 rounded-2xl p-8 relative shadow-lg mb-8">
+         <div className="absolute top-0 left-0 w-1.5 h-full bg-primary-navy rounded-l-2xl"></div>
+         <h3 className="font-bold text-xl mb-6 text-primary-navy flex items-center">
+            <ClipboardList className="mr-3 text-primary-navy"/> การประเมินผล (Evaluation)
          </h3>
          
-         <div className="relative mb-10 space-y-4"> 
-             {/* 1. ผ่านการทดลองงาน */}
-             <div 
-                onClick={() => handleOpinionChange('pass')} 
-                className={`p-4 border-2 rounded-xl flex items-center gap-4 cursor-pointer transition-all duration-200 ${formData.passProbation ? 'bg-secondary-cream border-primary-gold shadow-md' : 'bg-white border-gray-100 hover:border-primary-gold/50'}`}
-             >
-                <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 ${formData.passProbation ? 'bg-primary-navy border-primary-navy text-white' : 'border-gray-300 text-transparent'}`}>
-                    <CheckCircle size={14}/>
-                </div>
-                <span className={`font-bold text-lg ${formData.passProbation ? 'text-primary-navy' : 'text-neutral-medium'}`}>ผ่านการทดลองงาน (Pass probation)</span>
-             </div>
-
-             {/* 2. ไม่ผ่านการทดลองงาน + ช่องกรอก */}
-             <div 
-                onClick={() => handleOpinionChange('notPass')} 
-                className={`p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${formData.notPassProbation ? 'bg-red-50 border-red-400 shadow-md' : 'bg-white border-gray-100 hover:border-red-300'}`}
-             >
-                <div className="flex items-center gap-4 mb-2">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 ${formData.notPassProbation ? 'bg-red-500 border-red-500 text-white' : 'border-gray-300 text-transparent'}`}>
-                        <CheckCircle size={14}/>
-                    </div>
-                    <span className={`font-bold text-lg ${formData.notPassProbation ? 'text-red-700' : 'text-neutral-medium'}`}>ไม่ผ่านการทดลองงาน (Not pass probation)</span>
-                </div>
-                
-                {formData.notPassProbation && (
-                    <div className="ml-10 mt-2 animate-in slide-in-from-top-2">
-                        <label className="text-xs text-red-600 font-bold mb-1 block">ระบุเหตุผล (Reason):</label>
-                        <input 
-                            type="text" 
-                            name="notPassReason"
-                            value={formData.notPassReason}
-                            onChange={handleInputChange}
-                            onClick={(e) => e.stopPropagation()} 
-                            disabled={isReadOnly('general')}
-                            className="w-full border-b-2 border-red-200 bg-transparent py-1 text-primary-navy focus:border-red-500 outline-none transition-colors"
-                            placeholder="พิมพ์สาเหตุที่ไม่ผ่าน..."
-                        />
-                    </div>
-                )}
-             </div>
-
-            {/* 3. อื่นๆ + ช่องกรอก */}
-            <div 
-                onClick={() => handleOpinionChange('other')} 
-                className={`p-4 border-2 rounded-xl cursor-pointer transition-all duration-200 ${formData.otherOpinion ? 'bg-blue-50 border-accent-royalblue shadow-md' : 'bg-white border-gray-100 hover:border-accent-royalblue/50'}`}
-             >
-                <div className="flex items-center gap-4 mb-2">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center border-2 ${formData.otherOpinion ? 'bg-accent-royalblue border-accent-royalblue text-white' : 'border-gray-300 text-transparent'}`}>
-                        <CheckCircle size={14}/>
-                    </div>
-                    <span className={`font-bold text-lg ${formData.otherOpinion ? 'text-accent-royalblue' : 'text-neutral-medium'}`}>อื่นๆ (Other)</span>
-                </div>
-
-                {formData.otherOpinion && (
-                    <div className="ml-10 mt-2 animate-in slide-in-from-top-2">
-                        <label className="text-xs text-accent-royalblue font-bold mb-1 block">รายละเอียด (Details):</label>
-                        <input 
-                            type="text" 
-                            name="otherOpinionText"
-                            value={formData.otherOpinionText}
-                            onChange={handleInputChange}
-                            onClick={(e) => e.stopPropagation()}
-                            disabled={isReadOnly('general')}
-                            className="w-full border-b-2 border-blue-200 bg-transparent py-1 text-primary-navy focus:border-accent-royalblue outline-none transition-colors"
-                            placeholder="ระบุความเห็นเพิ่มเติม..."
-                        />
-                    </div>
-                )}
-             </div>
-
-             {isReadOnly('general') && <LockOverlay text=""/>}
+         <div className="space-y-4">
+            {evaluationTopics.map(topic => (
+               <div key={topic.id} className="p-4 rounded-xl border border-secondary-silver/30 hover:shadow-md transition-all bg-secondary-cream/10">
+                  <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                     <div className="flex-1">
+                        <span className="font-bold text-primary-navy mr-2">{topic.id}.</span>
+                        <span className="font-bold text-neutral-dark">{topic.t}</span>
+                        <span className="text-xs text-neutral-medium ml-2">(Weight: {topic.weight})</span>
+                     </div>
+                     <div className="flex gap-1.5">
+                        {[1,2,3,4,5,6,7].map(num => (
+                           <button 
+                             key={num} 
+                             onClick={() => handleRatingChange(topic.id, num)}
+                             disabled={isReadOnly('general')}
+                             className={`w-10 h-10 rounded-lg font-bold border transition-all ${formData.ratings[topic.id]===num ? 'bg-primary-navy text-white scale-110 shadow-lg' : 'bg-white hover:bg-gray-100 text-gray-400'}`}
+                           >
+                             {num}
+                           </button>
+                        ))}
+                     </div>
+                  </div>
+               </div>
+            ))}
          </div>
-
-         <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-6 border-t-2 border-secondary-silver/20">
-            <SignatureBlock 
-              role="ผู้ประเมิน (Assessor)" 
-              signatureData={formData.assessorSign} 
-              onSignClick={()=>openSignaturePad('assessor')} 
-              isActive={canEdit('general')} 
-              isSigned={!!formData.assessorSign} 
-            />
-            <SignatureBlock 
-              role={appSettings.role_hr_title || "ฝ่ายบุคคล (HR)"} 
-              signatureData={formData.hrSign} 
-              onSignClick={()=>openSignaturePad('hr')} 
-              isActive={canEdit('hr')} 
-              isSigned={!!formData.hrSign} 
-              hasComment 
-              commentVal={formData.hrOpinion} 
-              onCommentChange={handleHROpinionChange} 
-              commentDisabled={!canEdit('hr')} 
-            />
-            <SignatureBlock 
-              role={appSettings.role_approver_title || "ผู้อนุมัติ (Approver)"} 
-              signatureData={formData.approverSign} 
-              onSignClick={()=>openSignaturePad('approver')} 
-              isActive={canEdit('approver')} 
-              isSigned={!!formData.approverSign} 
-              hasComment 
-              commentVal={formData.approverOpinion} 
-              onCommentChange={handleApproverOpinionChange} 
-              commentDisabled={!canEdit('approver')} 
-            />
+         {/* Total Score */}
+         <div className="mt-8 bg-primary-navy rounded-2xl p-6 text-white shadow-xl flex justify-between items-center">
+             <div>
+                <p className="text-xs font-bold uppercase opacity-80">Total Score</p>
+                <p className="text-4xl font-black">{totalScore.toFixed(2)} <span className="text-xl font-medium text-gray-400">/ 700</span></p>
+             </div>
+             <div>
+                <p className="text-xs font-bold uppercase opacity-80">Mean Rating</p>
+                <p className="text-3xl font-bold text-primary-gold">{avgScore.toFixed(2)}</p>
+             </div>
          </div>
+         {isReadOnly('general') && <LockOverlay/>}
+      </div>
+
+      {/* --- Section 3: Summary & Signature --- */}
+      <div className="bg-white border border-secondary-silver/50 rounded-2xl p-8 relative shadow-lg mb-8">
+          <div className="absolute top-0 left-0 w-1.5 h-full bg-green-600 rounded-l-2xl"></div>
+          <h3 className="font-bold text-xl mb-6 text-primary-navy flex items-center">
+             <CheckCircle className="mr-3 text-green-600"/> สรุปผล (Summary)
+          </h3>
+          
+          {/* Checkboxes */}
+          <div className="space-y-3 mb-8">
+              <SummaryOption label="ผ่านการทดลองงาน" checked={formData.passProbation} onClick={()=>handleOpinionChange('pass')} disabled={isReadOnly('general')}/>
+              <SummaryOption label="ไม่ผ่านการทดลองงาน" checked={formData.notPassProbation} onClick={()=>handleOpinionChange('notPass')} disabled={isReadOnly('general')}>
+                  {formData.notPassProbation && <input type="text" value={formData.notPassReason} onChange={handleInputChange} name="notPassReason" className="w-full border-b border-red-300 outline-none text-red-700 mt-2" placeholder="ระบุเหตุผล..."/>}
+              </SummaryOption>
+              <SummaryOption label="อื่นๆ" checked={formData.otherOpinion} onClick={()=>handleOpinionChange('other')} disabled={isReadOnly('general')}>
+                   {formData.otherOpinion && <input type="text" value={formData.otherOpinionText} onChange={handleInputChange} name="otherOpinionText" className="w-full border-b border-blue-300 outline-none text-blue-700 mt-2" placeholder="ระบุความเห็น..."/>}
+              </SummaryOption>
+          </div>
+
+          {/* Signature Blocks */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-6 border-t">
+             <SignatureBlock 
+                role="ผู้ประเมิน (Assessor)" 
+                signatureData={formData.assessorSign} 
+                onSignClick={()=>openSignaturePad('assessor')} 
+                isActive={canEdit('general') || canEdit('assessor')} 
+                isSigned={!!formData.assessorSign} 
+             />
+             <SignatureBlock 
+                role={appSettings.role_hr_title || "ฝ่ายบุคคล (HR)"} 
+                signatureData={formData.hrSign} 
+                onSignClick={()=>openSignaturePad('hr')} 
+                isActive={canEdit('hr')} 
+                isSigned={!!formData.hrSign} 
+                hasComment 
+                commentVal={formData.hrOpinion}
+                onCommentChange={handleHROpinionChange}
+                commentDisabled={isReadOnly('hr')}
+             />
+             <SignatureBlock 
+                role={appSettings.role_approver_title || "ผู้อนุมัติ"} 
+                signatureData={formData.approverSign} 
+                onSignClick={()=>openSignaturePad('approver')} 
+                isActive={canEdit('approver')} 
+                isSigned={!!formData.approverSign}
+                hasComment 
+                commentVal={formData.approverOpinion}
+                onCommentChange={handleApproverOpinionChange}
+                commentDisabled={isReadOnly('approver')}
+             />
+          </div>
+      </div>
+
+      {/* --- ✅ NEW BOTTOM BAR: Print & Save (Sticky Bottom) --- */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-secondary-silver p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] flex justify-center items-center gap-4 z-40 animate-in slide-in-from-bottom-2">
+          
+          {/* ปุ่ม Print */}
+          <button 
+             onClick={() => handlePrint(formData, totalScore, avgScore, appSettings)} 
+             className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-transform hover:-translate-y-1"
+          >
+             <Printer size={20}/> พิมพ์
+          </button>
+
+          {/* ปุ่ม Save (บันทึกข้อมูล) */}
+          <button 
+             onClick={handleMainSave}
+             className="flex items-center gap-2 bg-gradient-to-r from-primary-navy to-accent-royalblue hover:from-primary-navy hover:to-primary-navy text-white px-8 py-3 rounded-xl font-bold shadow-xl shadow-blue-900/20 transition-all hover:scale-105"
+          >
+             <Save size={20}/> บันทึกข้อมูล
+          </button>
       </div>
       
-      {signatureModalOpen && <SignatureModal onSave={handleSaveSignature} onClose={() => setSignatureModalOpen(false)} title={`ลงชื่อ: ${signTarget === 'assessor' ? 'ผู้ประเมิน' : signTarget === 'hr' ? (appSettings.role_hr_title || 'ฝ่ายบุคคล') : (appSettings.role_approver_title || 'ผู้อนุมัติ')}`} />}
+      {/* Signature Modal (ใช้ state ภายในเพื่อยืนยันลายเซ็น) */}
+      {signatureModalOpen && (
+          <SignatureModal 
+             onSave={handleConfirmSignature} // ✅ กด Confirm ใน Modal แค่เก็บรูป
+             onClose={() => setSignatureModalOpen(false)} 
+             title={`ลงชื่อ: ${signTarget === 'assessor' ? 'ผู้ประเมิน' : signTarget === 'hr' ? (appSettings.role_hr_title || 'ฝ่ายบุคคล') : (appSettings.role_approver_title || 'ผู้อนุมัติ')}`} 
+          />
+      )}
     </div>
   );
 };
+
+// --- Helper Components ---
+
+const LeaveInput = ({ label, name, data, onChange, disabled, isLate, isAbsence }) => {
+    let daysKey = 'days';
+    let hoursKey = 'hours';
+    if(isLate) { daysKey = 'times'; hoursKey = 'mins'; }
+
+    return (
+    <div>
+        <label className={`text-xs font-bold mb-1 ${isLate || isAbsence ? 'text-red-500' : 'text-neutral-medium'}`}>{label}</label>
+        <div className="flex gap-2">
+            <input type="number" placeholder={isLate ? "ครั้ง" : "วัน"} value={data?.[daysKey]} onChange={(e)=>onChange(name, daysKey, e.target.value)} disabled={disabled} className={`w-full border rounded-lg p-2 text-center ${isLate || isAbsence ? 'bg-red-50 border-red-200 text-red-700' : ''}`}/>
+            <input type="number" placeholder={isLate ? "นาที" : "ชม."} value={data?.[hoursKey]} onChange={(e)=>onChange(name, hoursKey, e.target.value)} disabled={disabled} className={`w-full border rounded-lg p-2 text-center ${isLate || isAbsence ? 'bg-red-50 border-red-200 text-red-700' : ''}`}/>
+        </div>
+    </div>
+    )
+};
+
+const SummaryOption = ({ label, checked, onClick, disabled, children }) => (
+    <div onClick={!disabled ? onClick : null} className={`p-4 border-2 rounded-xl cursor-pointer transition-all ${checked ? 'bg-secondary-cream border-primary-gold' : 'bg-white border-gray-100'} ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}>
+        <div className="flex items-center gap-3">
+            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${checked ? 'bg-primary-navy border-primary-navy text-white' : 'border-gray-300'}`}>
+                {checked && <CheckCircle size={12}/>}
+            </div>
+            <span className="font-bold text-primary-navy">{label}</span>
+        </div>
+        {children}
+    </div>
+);
 
 const EmployeeManagementModal = ({ onClose, currentEmployees, onRefresh, setGlobalLoading }) => {
   const [sheetId, setSheetId] = useState("13ko9sbzz9_RlBqvb02g-A6_Tc3sMq1YP7-CjlhGKB9E");
@@ -2100,7 +1801,7 @@ const htmlContent = `
                   <div style="display:flex; align-items:flex-end; gap:5px;">
                       <span class="sig-label">(Chief Executive Officer) : </span>
                       <span class="border-b" style="flex:1; color:blue; display:inline-block;">
-                          ${data.ceoOpinion || ''}
+                          ${data.approverOpinion || ''}
                       </span>
                   </div>
                 </div>
