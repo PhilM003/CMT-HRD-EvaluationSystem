@@ -311,7 +311,7 @@ const SettingsModal = ({ onClose, currentSettings, onSave, setGlobalLoading }) =
     setGlobalLoading(true);
     try {
       await apiCall({
-        action: 'saveSettings',
+        action: 'evalSaveSettings', 
         settings: formData
       });
       alert('✅ บันทึกการตั้งค่าเรียบร้อย\n(หมายเหตุ: หากชื่อตำแหน่งไม่เปลี่ยน กรุณาตรวจสอบโค้ด Backend)');
@@ -1920,12 +1920,12 @@ const htmlContent = `
                                     <div class="diag-bottom" style="font-size: 6px;">น้ำหนัก<br>Weight</div>
                                 </th>
                                 <th style="font-size: 8px; width: 6%">ใช้ไม่ได้<br>(Bad)<br>1</th>
-                                <th style="font-size: 8px; width: 6%">ต้องปรับปรุง<br>(Poor)<br>2</th>
-                                <th style="font-size: 8px; width: 6%">พอใช้<br>(Fair)<br>3</th>
-                                <th style="font-size: 8px; width: 6%">ดี<br>(Good)<br>4</th>
-                                <th style="font-size: 8px; width: 6%">ดีมาก<br>(Very Good)<br>5</th>
-                                <th style="font-size: 7px; width: 6%">ดีเยี่ยม<br>(Excellent)<br>6</th>
-                                <th style="font-size: 8px; width: 6%">ดีเลิศ<br>(Perfect)<br>7</th>
+                                <th style="font-size: 8px; width: 6%">ยังต่ำกว่าที่<br>ต้องการ<br>(Poor)<br>2</th>
+                                <th style="font-size: 8px; width: 6%">เกือบพอใช้<br>(Almost Fair)<br>3</th>
+                                <th style="font-size: 7px; width: 6%">พอใช้<br>(Fair)<br>4</th>
+                                <th style="font-size: 8px; width: 6%">ดี<br>(Good)<br>5</th>
+                                <th style="font-size: 8px; width: 6%">ดีมาก<br>(Very Good)<br>6</th>
+                                <th style="font-size: 8px; width: 6%">ดีเลิศ<br>(Excellent)<br>7</th>
                                 <th rowspan="2" style="width:8%;">คะแนน<br>(Score)</th>
                             </tr>
                         </thead>
