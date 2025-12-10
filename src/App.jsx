@@ -544,13 +544,16 @@ const DashboardView = ({ evaluations = [], onCreate, onEdit, onDelete, onManageE
 };
 
 // ==========================================
-// EVALUATION FORM COMPONENT (FULL UPDATE)
+// EVALUATION FORM COMPONENT (FIXED & IMPROVED)
 // ==========================================
 const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, onSaveComplete, autoOpenSignRole, setGlobalLoading, appSettings }) => {
   // --- State ---
   const [status, setStatus] = useState(initialData?.status || 'draft');
   const [dbId, setDbId] = useState(initialData?.id || null);
-  const [showSuccessModal, setShowSuccessModal] = useState(false); // ✅ State สำหรับหน้าจบของ Guest
+  
+  // State สำหรับ Modal ต่างๆ
+  const [showGuestSuccessModal, setShowGuestSuccessModal] = useState(false); // สำหรับ Guest (จบงาน)
+  const [showRedirectModal, setShowRedirectModal] = useState(false); // ✅ ใหม่: สำหรับ Admin (กำลังกลับ Dashboard)
   
   // --- Initialize Form Data ---
   const initialFormData = {
@@ -559,7 +562,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     sickLeave: { days: '', hours: '' }, personalLeave: { days: '', hours: '' }, otherLeave: { days: '', hours: '' }, late: { times: '', mins: '' }, absence: { days: '', hours: '' },
     ratings: {},
     passProbation: false, notPassProbation: false, notPassReason: '', otherOpinion: false, otherOpinionText: '',
-    assessorSign: '', hrOpinion: '', hrSign: '', approverSign: '' // เก็บรูปภาพ Base64
+    assessorSign: '', hrOpinion: '', hrSign: '', approverSign: '' 
   };
 
   const [formData, setFormData] = useState(() => {
@@ -567,28 +570,25 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
       return { ...initialFormData, ...initialData, ratings: initialData.ratings || {} };
   });
 
-  // --- Sync Initial Data (แก้ปัญหา Magic Link ข้อมูลไม่ขึ้น) ---
+  // --- Sync Initial Data ---
   useEffect(() => {
     if (initialData) {
-      console.log("Syncing Initial Data:", initialData);
       setFormData(prev => ({ ...prev, ...initialData, ratings: initialData.ratings || {} }));
       setStatus(initialData.status || 'draft');
       setDbId(initialData.id);
     }
   }, [initialData]);
 
-  // --- Auto Open Signature (Optional: เปิดให้เซ็นเลยถ้าเป็น Guest แต่ไม่บังคับบันทึก) ---
+  // --- Auto Open Signature (Delayed) ---
   useEffect(() => {
     if (autoOpenSignRole && !signatureModalOpen && status !== 'completed') {
-       // เช็คว่าเป็นคิวของ Guest คนนั้นจริงๆ ถึงจะเด้งขึ้นมา
        const isHRTurn = autoOpenSignRole === 'hr' && status === 'pending_hr';
        const isApproverTurn = autoOpenSignRole === 'approver' && status === 'pending_approval';
        const isAssessorTurn = autoOpenSignRole === 'assessor' && (status === 'draft' || status === 'returned');
 
        if (isHRTurn || isApproverTurn || isAssessorTurn) {
-           // หน่วงเวลาเล็กน้อยให้หน้าเว็บโหลดเสร็จก่อนค่อยเด้ง
            const timer = setTimeout(() => {
-               // openSignaturePad(autoOpenSignRole); // ⚠️ Comment ออกถ้าอยากให้ดูเอกสารก่อนค่อยกดเซ็นเอง
+               // openSignaturePad(autoOpenSignRole); // (Optional: เปิด Auto ได้ถ้าต้องการ)
            }, 800);
            return () => clearTimeout(timer);
        }
@@ -601,27 +601,17 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
   const [totalScore, setTotalScore] = useState(0);
   const [avgScore, setAvgScore] = useState(0);
 
-  // --- Logic 1: ความยืดหยุ่นในการแก้ไข (Permission) ---
-  const isGuest = !!autoOpenSignRole; // ตรวจสอบว่าเป็น Guest หรือไม่
-
+  // --- Permission Logic ---
+  const isGuest = !!autoOpenSignRole; 
   const canEdit = (section) => {
-      // 1. ถ้าเป็น User หลัก (Admin/Assess) เข้าลิงก์หลัก -> แก้ได้ทุกอย่าง ยืดหยุ่นสุดๆ
-      if (!isGuest) return true; 
-
-      // 2. ถ้าเป็น Guest (Magic Link) -> แก้ได้เฉพาะส่วนของตัวเอง และต้องยังไม่เสร็จ
+      if (!isGuest) return true; // Admin/User หลัก แก้ได้หมด
       if (status === 'completed') return false;
-      
-      // Guest: Assessor
       if (autoOpenSignRole === 'assessor') {
-         // Assessor แก้ได้หมด ยกเว้นส่วนของ HR/Approver
          if (section === 'hr' || section === 'approver') return false;
          return true;
       }
-      
-      // Guest: HR หรือ Approver แก้ได้เฉพาะช่องเซ็นและช่องความเห็นของตัวเอง
       return section === autoOpenSignRole;
   };
-
   const isReadOnly = (section) => !canEdit(section);
 
   // --- Helper Calculations ---
@@ -648,7 +638,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     setAvgScore(weightedSum / 7);
   }, [formData.ratings]);
 
-  // --- Input Handlers ---
+  // --- Input Handlers (ย่อ) ---
   const handleNameSearch = (e) => { setFormData(prev => ({ ...prev, employeeName: e.target.value })); setShowEmployeeDropdown(true); };
   const selectEmployee = (emp) => {
     setFormData(prev => ({ ...prev, employeeName: emp.name, employeeId: emp.id, position: emp.position, section: emp.section, department: emp.department, startDate: emp.startDate, dueProbationDate: emp.dueProbation }));
@@ -663,35 +653,18 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
       setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
     }
   };
-  const handleNestedChange = (category, field, value) => {
-    if (!canEdit('general')) return;
-    setFormData(prev => ({ ...prev, [category]: { ...prev[category], [field]: value } }));
-  };
-  const handleRatingChange = (topicId, score) => {
-    if (!canEdit('general')) return;
-    setFormData(prev => ({ ...prev, ratings: { ...prev.ratings, [topicId]: score } }));
-  };
-  const handleOpinionChange = (type) => {
-    if (!canEdit('general')) return;
-    setFormData(prev => ({ ...prev, passProbation: type === 'pass' ? !prev.passProbation : false, notPassProbation: type === 'notPass' ? !prev.notPassProbation : false, otherOpinion: type === 'other' ? !prev.otherOpinion : false }));
-  };
-  const handleHROpinionChange = (e) => {
-    if (!canEdit('hr')) return;
-    setFormData(prev => ({ ...prev, hrOpinion: e.target.value }));
-  };
-  const handleApproverOpinionChange = (e) => {
-    if (!canEdit('approver')) return;
-    setFormData(prev => ({ ...prev, approverOpinion: e.target.value }));
-  };
+  const handleNestedChange = (category, field, value) => { if (!canEdit('general')) return; setFormData(prev => ({ ...prev, [category]: { ...prev[category], [field]: value } })); };
+  const handleRatingChange = (topicId, score) => { if (!canEdit('general')) return; setFormData(prev => ({ ...prev, ratings: { ...prev.ratings, [topicId]: score } })); };
+  const handleOpinionChange = (type) => { if (!canEdit('general')) return; setFormData(prev => ({ ...prev, passProbation: type === 'pass' ? !prev.passProbation : false, notPassProbation: type === 'notPass' ? !prev.notPassProbation : false, otherOpinion: type === 'other' ? !prev.otherOpinion : false })); };
+  const handleHROpinionChange = (e) => { if (!canEdit('hr')) return; setFormData(prev => ({ ...prev, hrOpinion: e.target.value })); };
+  const handleApproverOpinionChange = (e) => { if (!canEdit('approver')) return; setFormData(prev => ({ ...prev, approverOpinion: e.target.value })); };
   
-  // --- Signature Logic ---
   const openSignaturePad = (target) => {
     if (!canEdit(target)) return alert("⛔ คุณไม่มีสิทธิ์แก้ไขช่องนี้");
     setSignTarget(target);
     setSignatureModalOpen(true);
   };
 
-  // ✅ Logic 2: กด "ยืนยัน" ใน Modal -> แค่เก็บรูปลง State หน้าจอ (ยังไม่บันทึกชีท)
   const handleConfirmSignature = (dataUrl) => {
      setFormData(prev => ({
          ...prev,
@@ -706,28 +679,24 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     setFormData(prev => ({ ...prev, assessorSign: '', hrSign: '', approverSign: '' }));
   };
 
-  // ✅ Logic 3: ปุ่ม "บันทึกข้อมูล" (Save to Sheet + Email + Redirect)
+  // ========================================================
+  // ✅ LOGIC: Main Save Function (Fixed)
+  // ========================================================
   const handleMainSave = async () => {
     if (!formData.employeeName) return alert("❌ กรุณาระบุชื่อพนักงาน");
 
-    // กำหนดสถานะใหม่ (คำนวณจากลายเซ็นที่มีอยู่จริงใน State)
+    // คำนวณสถานะใหม่
     let newStatus = status;
-    
-    // Logic การเปลี่ยนสถานะตามลายเซ็น (ใช้ได้ทั้ง Guest และ User หลัก)
-    if (formData.approverSign) {
-        newStatus = 'completed';
-    } else if (formData.hrSign) {
-        newStatus = 'pending_approval';
-    } else if (formData.assessorSign) {
-        newStatus = 'pending_hr';
-    } else {
-        newStatus = 'draft';
-    }
+    if (formData.approverSign) newStatus = 'completed';
+    else if (formData.hrSign) newStatus = 'pending_approval';
+    else if (formData.assessorSign) newStatus = 'pending_hr';
+    else newStatus = 'draft';
 
-    setGlobalLoading(true);
+    setGlobalLoading(true); // โชว์ Loading หมุนๆ
     
-    // 1. สร้าง ID (Frontend Force)
+    // 1. Force ID
     const forcedId = dbId || formData.id || formData.eva_id || Date.now().toString();
+    
     const payload = {
         ...formData,
         id: forcedId,
@@ -739,55 +708,77 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     };
 
     try {
-        // 2. บันทึกลง Sheet
-        await apiCall(payload);
+        // 2. เรียก API และ **รอผลลัพธ์**
+        const response = await apiCall(payload);
+
+        // 🛡️ เช็คความถูกต้อง: ถ้า response ว่างเปล่า หรือ success = false ให้หยุดทันที
+        if (!response || (response.success === false)) {
+            throw new Error(response?.message || "บันทึกข้อมูลไม่สำเร็จ (No Response)");
+        }
         
-        // 3. อัปเดต State Local
+        // --- ถ้ามาถึงตรงนี้แปลว่าบันทึกสำเร็จจริง ---
+        
         setDbId(forcedId);
         setStatus(newStatus);
-        setFormData(payload);
+        setFormData(payload); // อัปเดต state ด้วยข้อมูลที่ส่งไป
 
-        // 4. ส่ง Email (ถ้าสถานะเปลี่ยน หรือ เป็น Guest ที่เข้ามาเซ็น)
-        // Guest ควรสั่งส่งเมลเสมอเพื่อแจ้ง Step ถัดไป
+        // 3. ส่ง Email (เฉพาะเมื่อสถานะเปลี่ยน หรือ เป็น Guest)
         if (newStatus !== status || isGuest) {
             console.log("📨 Sending Email...");
             await sendGmailNotification(formData.employeeName, status, newStatus, forcedId, appSettings);
         }
 
-        // ✅ Logic 4: แยกทางจบ (Redirect vs Popup)
+        // 4. แยกการทำงานหลังบันทึก
         if (isGuest) {
-             // ถ้าเป็น Guest -> เด้งหน้าขอบคุณ
-             setShowSuccessModal(true);
+             // ถ้าเป็น Guest -> โชว์หน้า Success ค้างไว้
+             setShowGuestSuccessModal(true);
         } else {
-             // ถ้าเป็น User หลัก -> กลับ Dashboard
-             alert("✅ บันทึกข้อมูลเรียบร้อย");
-             onSaveComplete(); 
+             // ถ้าเป็น Admin/User -> โชว์หน้า Redirect Modal (หน่วงเวลา 2 วิ)
+             setShowRedirectModal(true);
+             
+             setTimeout(() => {
+                 onSaveComplete(); // กลับ Dashboard
+             }, 2000);
         }
 
     } catch (e) {
-        console.error(e);
-        alert("❌ เกิดข้อผิดพลาดในการบันทึก: " + e.message);
+        console.error("Save Error:", e);
+        alert("❌ เกิดข้อผิดพลาดในการบันทึก: " + e.message + "\n(กรุณาลองใหม่อีกครั้ง)");
     } finally {
-        setGlobalLoading(false);
+        setGlobalLoading(false); // ปิด Loading หมุนๆ
     }
   };
 
-  // --- Render: Success Page for Guest ---
-  if (showSuccessModal) {
+  // --- Render: Guest Success Modal ---
+  if (showGuestSuccessModal) {
       return (
         <div className="fixed inset-0 bg-white z-[60] flex flex-col items-center justify-center p-6 animate-in fade-in zoom-in duration-300">
            <div className="w-24 h-24 bg-green-100 rounded-full flex items-center justify-center mb-6 shadow-xl ring-8 ring-green-50">
               <CheckCircle size={64} className="text-green-600" />
            </div>
-           <h1 className="text-3xl font-extrabold text-primary-navy mb-4 text-center">ได้รับการรับรองจากท่านเรียบร้อย</h1>
-           <p className="text-neutral-medium mb-10 text-center text-lg max-w-md">ข้อมูลของท่านถูกบันทึกเข้าสู่ระบบอย่างสมบูรณ์แล้ว</p>
+           <h1 className="text-3xl font-extrabold text-primary-navy mb-4 text-center">ได้รับการรับรองเรียบร้อย</h1>
+           <p className="text-neutral-medium mb-10 text-center text-lg max-w-md">ขอบคุณสำหรับความร่วมมือ ข้อมูลของท่านถูกบันทึกและส่งอีเมลแจ้งเตือนเรียบร้อยแล้ว</p>
            
-           <button 
-             onClick={() => { window.location.href = 'https://www.google.com'; }} // หรือปิด Tab
-             className="px-10 py-4 bg-primary-navy text-white hover:bg-accent-royalblue font-bold rounded-2xl transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 flex items-center gap-2"
-           >
+           <button onClick={() => { window.location.href = 'https://www.google.com'; }} className="px-10 py-4 bg-primary-navy text-white hover:bg-accent-royalblue font-bold rounded-2xl transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 flex items-center gap-2">
              <LogOut size={20}/> ออกจากหน้านี้
            </button>
+        </div>
+      );
+  }
+
+  // --- Render: Admin Redirect Modal (✅ หน้าใหม่สำหรับรอ) ---
+  if (showRedirectModal) {
+      return (
+        <div className="fixed inset-0 bg-white/90 backdrop-blur-sm z-[70] flex flex-col items-center justify-center animate-in fade-in duration-300">
+           <div className="bg-white p-8 rounded-3xl shadow-2xl border border-secondary-silver flex flex-col items-center max-w-sm w-full">
+               <div className="w-16 h-16 border-4 border-primary-navy border-t-transparent rounded-full animate-spin mb-6"></div>
+               <h2 className="text-xl font-bold text-primary-navy mb-2">บันทึกข้อมูลสำเร็จ!</h2>
+               <p className="text-gray-500 text-sm mb-4">Saved Successfully</p>
+               <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                   <div className="h-full bg-green-500 animate-[width_2s_ease-out_forwards]" style={{width: '0%'}}></div>
+               </div>
+               <p className="text-xs text-gray-400 mt-4">กำลังพาท่านกลับสู่ Dashboard...</p>
+           </div>
         </div>
       );
   }
@@ -798,7 +789,6 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
       
       {/* Header Controls */}
       <div className="flex justify-between items-center mb-6 print:hidden">
-        {/* ปุ่มย้อนกลับ (แสดงเฉพาะ User หลัก) */}
         {!isGuest ? (
             <button onClick={onBack} className="flex items-center text-neutral-medium hover:text-primary-navy transition-colors font-bold px-3 py-2 rounded-lg hover:bg-secondary-cream/50">
                 <ArrowLeft className="mr-2" size={20}/> กลับหน้า Dashboard
@@ -812,8 +802,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
         
         <div className="flex items-center gap-3">
              <StatusBadge status={status} size="lg" />
-             {/* ปุ่ม Reset Status (เฉพาะ Admin) */}
-            {(status !== 'draft' && currentRole === 'admin') && (
+             {(status !== 'draft' && currentRole === 'admin') && (
                 <button onClick={handleResetStatus} className="flex items-center gap-2 bg-white text-secondary-darkgold border border-secondary-darkgold hover:bg-secondary-cream px-4 py-2 rounded-lg font-bold shadow-sm transition-all text-xs md:text-sm">
                     <RotateCcw size={16}/> Reset
                 </button>
@@ -845,7 +834,6 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
                   className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none font-medium" 
                   placeholder="พิมพ์ชื่อ..."
                />
-               {/* Dropdown Logic */}
                {showEmployeeDropdown && (
                  <div className="absolute z-10 w-full bg-white border border-secondary-silver shadow-2xl max-h-60 overflow-auto mt-2 rounded-xl">
                    {employeeList.filter(e=>(e.name || "").toLowerCase().includes(formData.employeeName.toLowerCase())).map(emp=>(
@@ -856,14 +844,12 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
                  </div>
                )}
              </div>
-             {/* Fields อื่นๆ */}
              <InputField label="รหัส (ID)" value={formData.employeeId} disabled/>
              <InputField label="ตำแหน่ง (Position)" value={formData.position} disabled/>
              <InputField label="แผนก (Department)" value={formData.department} disabled/>
              <InputField label="วันเริ่มงาน" value={formData.startDate} name="startDate" onChange={handleInputChange} disabled={isReadOnly('general')}/>
              <InputField label="วันครบกำหนด" value={formData.dueProbationDate} name="dueProbationDate" onChange={handleInputChange} disabled={isReadOnly('general')}/>
              
-             {/* Statistic Period */}
              <div className="md:col-span-2 mt-4">
                  <label className="text-xs text-neutral-medium font-bold mb-2 block uppercase tracking-wider">ช่วงวันที่เก็บสถิติ</label>
                  <div className="flex gap-4">
@@ -873,7 +859,6 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
              </div>
           </div>
 
-          {/* Time Attendance Section */}
           <div className="mt-8 pt-6 border-t border-secondary-silver/30">
              <h4 className="font-bold text-lg text-primary-navy mb-4">ข้อมูลสถิติการทำงาน</h4>
              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -892,7 +877,6 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
          <h3 className="font-bold text-xl mb-6 text-primary-navy flex items-center">
             <ClipboardList className="mr-3 text-primary-navy"/> การประเมินผล (Evaluation)
          </h3>
-         
          <div className="space-y-4">
             {evaluationTopics.map(topic => (
                <div key={topic.id} className="p-4 rounded-xl border border-secondary-silver/30 hover:shadow-md transition-all bg-secondary-cream/10">
@@ -904,21 +888,13 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
                      </div>
                      <div className="flex gap-1.5">
                         {[1,2,3,4,5,6,7].map(num => (
-                           <button 
-                             key={num} 
-                             onClick={() => handleRatingChange(topic.id, num)}
-                             disabled={isReadOnly('general')}
-                             className={`w-10 h-10 rounded-lg font-bold border transition-all ${formData.ratings[topic.id]===num ? 'bg-primary-navy text-white scale-110 shadow-lg' : 'bg-white hover:bg-gray-100 text-gray-400'}`}
-                           >
-                             {num}
-                           </button>
+                           <button key={num} onClick={() => handleRatingChange(topic.id, num)} disabled={isReadOnly('general')} className={`w-10 h-10 rounded-lg font-bold border transition-all ${formData.ratings[topic.id]===num ? 'bg-primary-navy text-white scale-110 shadow-lg' : 'bg-white hover:bg-gray-100 text-gray-400'}`}>{num}</button>
                         ))}
                      </div>
                   </div>
                </div>
             ))}
          </div>
-         {/* Total Score */}
          <div className="mt-8 bg-primary-navy rounded-2xl p-6 text-white shadow-xl flex justify-between items-center">
              <div>
                 <p className="text-xs font-bold uppercase opacity-80">Total Score</p>
@@ -938,8 +914,6 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
           <h3 className="font-bold text-xl mb-6 text-primary-navy flex items-center">
              <CheckCircle className="mr-3 text-green-600"/> สรุปผล (Summary)
           </h3>
-          
-          {/* Checkboxes */}
           <div className="space-y-3 mb-8">
               <SummaryOption label="ผ่านการทดลองงาน" checked={formData.passProbation} onClick={()=>handleOpinionChange('pass')} disabled={isReadOnly('general')}/>
               <SummaryOption label="ไม่ผ่านการทดลองงาน" checked={formData.notPassProbation} onClick={()=>handleOpinionChange('notPass')} disabled={isReadOnly('general')}>
@@ -949,69 +923,24 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
                    {formData.otherOpinion && <input type="text" value={formData.otherOpinionText} onChange={handleInputChange} name="otherOpinionText" className="w-full border-b border-blue-300 outline-none text-blue-700 mt-2" placeholder="ระบุความเห็น..."/>}
               </SummaryOption>
           </div>
-
-          {/* Signature Blocks */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-6 border-t">
-             <SignatureBlock 
-                role="ผู้ประเมิน (Assessor)" 
-                signatureData={formData.assessorSign} 
-                onSignClick={()=>openSignaturePad('assessor')} 
-                isActive={canEdit('general') || canEdit('assessor')} 
-                isSigned={!!formData.assessorSign} 
-             />
-             <SignatureBlock 
-                role={appSettings.role_hr_title || "ฝ่ายบุคคล (HR)"} 
-                signatureData={formData.hrSign} 
-                onSignClick={()=>openSignaturePad('hr')} 
-                isActive={canEdit('hr')} 
-                isSigned={!!formData.hrSign} 
-                hasComment 
-                commentVal={formData.hrOpinion}
-                onCommentChange={handleHROpinionChange}
-                commentDisabled={isReadOnly('hr')}
-             />
-             <SignatureBlock 
-                role={appSettings.role_approver_title || "ผู้อนุมัติ"} 
-                signatureData={formData.approverSign} 
-                onSignClick={()=>openSignaturePad('approver')} 
-                isActive={canEdit('approver')} 
-                isSigned={!!formData.approverSign}
-                hasComment 
-                commentVal={formData.approverOpinion}
-                onCommentChange={handleApproverOpinionChange}
-                commentDisabled={isReadOnly('approver')}
-             />
+             <SignatureBlock role="ผู้ประเมิน (Assessor)" signatureData={formData.assessorSign} onSignClick={()=>openSignaturePad('assessor')} isActive={canEdit('general') || canEdit('assessor')} isSigned={!!formData.assessorSign} />
+             <SignatureBlock role={appSettings.role_hr_title || "ฝ่ายบุคคล (HR)"} signatureData={formData.hrSign} onSignClick={()=>openSignaturePad('hr')} isActive={canEdit('hr')} isSigned={!!formData.hrSign} hasComment commentVal={formData.hrOpinion} onCommentChange={handleHROpinionChange} commentDisabled={isReadOnly('hr')}/>
+             <SignatureBlock role={appSettings.role_approver_title || "ผู้อนุมัติ"} signatureData={formData.approverSign} onSignClick={()=>openSignaturePad('approver')} isActive={canEdit('approver')} isSigned={!!formData.approverSign} hasComment commentVal={formData.approverOpinion} onCommentChange={handleApproverOpinionChange} commentDisabled={isReadOnly('approver')}/>
           </div>
       </div>
 
-      {/* --- ✅ NEW BOTTOM BAR: Print & Save (Sticky Bottom) --- */}
+      {/* --- BOTTOM BAR --- */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-secondary-silver p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] flex justify-center items-center gap-4 z-40 animate-in slide-in-from-bottom-2">
-          
-          {/* ปุ่ม Print */}
-          <button 
-             onClick={() => handlePrint(formData, totalScore, avgScore, appSettings)} 
-             className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-transform hover:-translate-y-1"
-          >
+          <button onClick={() => handlePrint(formData, totalScore, avgScore, appSettings)} className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-transform hover:-translate-y-1">
              <Printer size={20}/> พิมพ์
           </button>
-
-          {/* ปุ่ม Save (บันทึกข้อมูล) */}
-          <button 
-             onClick={handleMainSave}
-             className="flex items-center gap-2 bg-gradient-to-r from-primary-navy to-accent-royalblue hover:from-primary-navy hover:to-primary-navy text-white px-8 py-3 rounded-xl font-bold shadow-xl shadow-blue-900/20 transition-all hover:scale-105"
-          >
+          <button onClick={handleMainSave} className="flex items-center gap-2 bg-gradient-to-r from-primary-navy to-accent-royalblue hover:from-primary-navy hover:to-primary-navy text-white px-8 py-3 rounded-xl font-bold shadow-xl shadow-blue-900/20 transition-all hover:scale-105">
              <Save size={20}/> บันทึกข้อมูล
           </button>
       </div>
       
-      {/* Signature Modal (ใช้ state ภายในเพื่อยืนยันลายเซ็น) */}
-      {signatureModalOpen && (
-          <SignatureModal 
-             onSave={handleConfirmSignature} // ✅ กด Confirm ใน Modal แค่เก็บรูป
-             onClose={() => setSignatureModalOpen(false)} 
-             title={`ลงชื่อ: ${signTarget === 'assessor' ? 'ผู้ประเมิน' : signTarget === 'hr' ? (appSettings.role_hr_title || 'ฝ่ายบุคคล') : (appSettings.role_approver_title || 'ผู้อนุมัติ')}`} 
-          />
-      )}
+      {signatureModalOpen && <SignatureModal onSave={handleConfirmSignature} onClose={() => setSignatureModalOpen(false)} title={`ลงชื่อ: ${signTarget === 'assessor' ? 'ผู้ประเมิน' : signTarget === 'hr' ? (appSettings.role_hr_title || 'ฝ่ายบุคคล') : (appSettings.role_approver_title || 'ผู้อนุมัติ')}`} />}
     </div>
   );
 };
@@ -1814,12 +1743,10 @@ const htmlContent = `
                     <div style="margin-top:5px; font-size:11px;">( ${approverTitle} )</div>
                 </div>
             </div>
-
+        </div>
             <div class="footer">
                 Form.FR-RC-007 แก้ไขครั้งที่ 02 เริ่มใช้วันที่ 17 กุมภาพันธ์ 2563 (Printed: ${printDateStr})
             </div>
-
-        </div>
         <script>
             window.onload = function() { setTimeout(function(){ window.print(); }, 500); }
         </script>
