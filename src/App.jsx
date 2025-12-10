@@ -1434,8 +1434,8 @@ const sendGmailNotification = async (employeeName, currentStatus, nextStatus, ev
   const hrTitle = settings?.role_hr_title || 'HR Manager';
   const approverTitle = settings?.role_approver_title || 'CEO';
   
-  const emailHR = settings?.email_hr || 'burin.wo@gmail.com';
-  const emailApprover = settings?.email_approver || 'burin.wo@gmail.com';
+  const emailHR = settings?.email_hr || 'carpetmaker05@gmail.com';
+  const emailApprover = settings?.email_approver || 'carpetmaker05@gmail.com';
 
   const refTime = new Date().toLocaleTimeString('th-TH').replace(/:/g, ''); 
   const refId = `${evalId}-${refTime}`; 
