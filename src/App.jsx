@@ -762,23 +762,8 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     }
   };
 
-  const handleSaveSignature = async (dataUrl) => { 
-    let newStatus = status;
-    if (signTarget === 'assessor') newStatus = 'pending_hr';
-    if (signTarget === 'hr') newStatus = 'pending_approval';
-    if (signTarget === 'approver') newStatus = 'completed';
-    
-    const updatedFormData = { 
-        ...formData, 
-        status: newStatus,
-        [signTarget === 'assessor' ? 'assessorSign' : signTarget === 'hr' ? 'hrSign' : 'approverSign']: dataUrl,
-        lastUpdated: new Date().toISOString(), 
-        updatedBy: currentRole,
-        action: 'saveEvaluation'
-    };
-
-    // 📂 ไฟล์ App.jsx
-    // 📍 ค้นหาฟังก์ชัน handleSaveSignature แล้วแทนที่ด้วยโค้ดชุดนี้ทั้งหมดครับ
+// 📂 ไฟล์ App.jsx
+// 📍 ค้นหาฟังก์ชัน handleSaveSignature แล้วแทนที่ด้วยโค้ดชุดนี้ทั้งหมดครับ
 
   const handleSaveSignature = async (dataUrl) => { 
     // 1. กำหนดสถานะใหม่
