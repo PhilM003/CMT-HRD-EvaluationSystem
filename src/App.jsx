@@ -299,8 +299,8 @@ export default function App() {
 
 const SettingsModal = ({ onClose, currentSettings, onSave, setGlobalLoading }) => {
   const [formData, setFormData] = useState({
-    statStartDate: "",
-    statEndDate: "",
+    attendFrom: "",
+    attendTo: "",
     role_hr_title: currentSettings.role_hr_title || 'ฝ่ายบุคคล (HR)',
     email_hr: currentSettings.email_hr || '',
     role_approver_title: currentSettings.role_approver_title || 'ผู้อนุมัติ (Approver)',
@@ -564,7 +564,14 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     passProbation: false, notPassProbation: false, notPassReason: '', otherOpinion: false, otherOpinionText: '',
     assessorSign: '', hrOpinion: '', hrSign: '', approverSign: ''
   };
-  const [formData, setFormData] = useState(initialData || initialFormData);
+  const [formData, setFormData] = useState(() => {
+      if (!initialData) return initialFormData;
+      return {
+          ...initialFormData, 
+          ...initialData,     
+          ratings: initialData.ratings || {} 
+      };
+  });
   const [showEmployeeDropdown, setShowEmployeeDropdown] = useState(false);
   const [signatureModalOpen, setSignatureModalOpen] = useState(false);
   const [signTarget, setSignTarget] = useState(null);
@@ -680,6 +687,11 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
   const handleHROpinionChange = (e) => {
     if (!canEdit('hr')) return;
     setFormData(prev => ({ ...prev, hrOpinion: e.target.value }));
+  };
+
+  const handleApproverOpinionChange = (e) => {
+    if (!canEdit('approver')) return;
+    setFormData(prev => ({ ...prev, approverOpinion: e.target.value }));
   };
 
   const isReadOnly = (section) => !canEdit(section);
@@ -921,8 +933,8 @@ return (
                             <span className="absolute top-2 left-3 text-xs text-neutral-medium">ตั้งแต่วันที่</span>
                             <input 
                                 type="date"
-                                value={formData.statStartDate || ""}
-                                onChange={(e) => setFormData({ ...formData, statStartDate: e.target.value })}
+                                value={formData.attendFrom || ""}
+                                onChange={(e) => setFormData({ ...formData, attendFrom: e.target.value })}
                                 className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pt-6 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none font-medium"
                             />
                         </div>
@@ -930,8 +942,8 @@ return (
                             <span className="absolute top-2 left-3 text-xs text-neutral-medium">ถึงวันที่</span>
                             <input 
                                 type="date"
-                                value={formData.statEndDate || ""}
-                                onChange={(e) => setFormData({ ...formData, statEndDate: e.target.value })}
+                                value={formData.attendTo || ""}
+                                onChange={(e) => setFormData({ ...formData, attendTo: e.target.value })}
                                 className="w-full border-2 border-secondary-silver/50 rounded-xl p-3 pt-6 focus:ring-4 focus:ring-primary-gold/20 focus:border-primary-gold outline-none font-medium"
                             />
                         </div>
@@ -1276,6 +1288,10 @@ return (
               onSignClick={()=>openSignaturePad('approver')} 
               isActive={canEdit('approver')} 
               isSigned={!!formData.approverSign} 
+              hasComment 
+              commentVal={formData.approverOpinion} 
+              onCommentChange={handleApproverOpinionChange} 
+              commentDisabled={!canEdit('approver')} 
             />
          </div>
       </div>
@@ -1753,290 +1769,294 @@ const htmlContent = `
                 font-size: 12px; 
                 margin: 0; 
                 padding: 0; 
-                background: #f0f0f0; /* สีพื้นหลังเว็ป (เวลาไม่ปริ้น) ให้เห็นกระดาษชัดๆ */
+                background: #fff; 
                 color: #000; 
                 line-height: 1.3; 
             }
 
-            /* --- Page Setup (A4) --- */
-            @page { size: A4; margin: 0; }
+            /* --- Page Setup (A4 Scaled) --- */
+            @page { 
+                size: A4; 
+                margin: 0; /* ตัดขอบ Default ออกเพื่อให้เราคุมเอง */
+            }
             
-            .page-a4 {
+            .page-container {
                 width: 210mm;
-                min-height: 297mm;
+                height: 297mm;
+                padding: 2mm 3mm; /* ระยะขอบกระดาษจริง (บนล่าง 15mm, ซ้ายขวา 10mm) */
                 margin: 0 auto;
                 background: white;
-                padding: 5mm; /* ระยะขอบกระดาษขาว */
-                display: flex;
-                flex-direction: column;
+                
+                /* 🔥 หัวใจสำคัญ: ย่อส่วนลง 95% เพื่อให้เหมือน PDF */
+                transform: scale(0.95); 
+                transform-origin: top center; /* ย่อโดยยึดจุดกึ่งกลางด้านบน */
             }
 
-            /* --- Frame Border (เส้นกรอบ) --- */
-            .frame-border {
-                border: 2px solid #000; /* เส้นกรอบสีดำ */
-                flex-grow: 1; /* ยืดให้เต็มความสูงกระดาษ */
-                padding: 15px; /* ระยะห่างจากเส้นกรอบถึงเนื้อหา */
-                display: flex;
-                flex-direction: column;
-            }
-
-            /* --- Hide on Print --- */
-            @media print { 
-                body { background: none; }
-                .page-a4 { margin: 0; box-shadow: none; height: 100vh; }
-            }
-
-            /* --- Existing Styles (ปรับปรุงเล็กน้อย) --- */
-            .container { width: 100%; }
+            /* --- Shared Classes --- */
             .text-center { text-align: center; }
             .text-right { text-align: right; }
             .font-bold { font-weight: bold; }
             .flex { display: flex; }
             .justify-between { justify-content: space-between; }
-            .items-end { align-items: flex-end; }
-            .border-b { border-bottom: 1px dotted #000; }
+            .justify-end { justify-content: flex-end; }
             .w-full { width: 100%; }
-            
-            .header { display: flex; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 15px; }
-            .company-info { width: 55%; font-size: 11px; padding-right: 10px; border-right: 2px solid #000; }
-            .form-title { width: 45%; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+            .border-b { border-bottom: 1px dotted #000; }
+
+            /* --- Section Box Style --- */
+            .section-box {
+                border: 1px solid #000;
+                padding: 8px 10px; /* ลด padding ลงนิดหน่อยให้กระชับ */
+                margin-bottom: -1px; 
+            }
+            .no-border-top { border-top: none !important; }
+
+            /* --- Header --- */
+            .header-content { display: flex; align-items: center; }
+            .company-info { width: 45%; font-size: 10px; padding-right: 10px; border-right: 1px solid #000; line-height: 1.2; }
+            .form-title { width: 55%; text-align: center; }
             .form-title h1 { font-size: 16px; margin: 0; font-weight: bold; }
             .form-title p { font-size: 12px; margin: 0; }
-            
-            .info-row { display: flex; margin-bottom: 5px; gap: 10px; align-items: flex-end; }
-            .field-label { white-space: nowrap; font-weight: bold; }
-            .field-value { border-bottom: 1px dotted #000; flex-grow: 1; text-align: center; color: #0033cc; padding-bottom: 0; height: 18px; }
-            
-            .attendance-box { border: 1px solid #000; padding: 10px; margin-top: 10px; border-radius: 4px; }
-            .attendance-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 5px; }
-            .att-item { display: flex; align-items: center; font-size: 11px; }
-            .att-input { border-bottom: 1px dotted #000; width: 30px; text-align: center; margin: 0 2px; color: blue; }
-            
-            table.eval-table { width: 100%; border-collapse: collapse; margin-top: 15px; border: 1px solid #000; }
-            table.eval-table th, table.eval-table td { border: 1px solid #000; padding: 4px; vertical-align: middle; }
-            table.eval-table th { background-color: #f0f0f0; font-weight: bold; text-align: center; height: 40px; }
 
-            table.head-eval-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 15px; border: 1px solid #000; }
-            table.head-eval-table th, table.head-eval-table td { border: 1px solid #000; padding: 4px; vertical-align: middle; }
-            table.head-eval-table th { background-color: #f0f0f0; font-weight: bold; text-align: center; height: 40px; }
+            /* --- Info Rows --- */
+            .info-row { display: flex; margin-bottom: 8px; gap: 8px; align-items: flex-end; font-size: 11px; }
+            .field-label { white-space: nowrap; font-weight: bold; }
+            .field-value { border-bottom: 1px dotted #000; flex-grow: 1; text-align: center; color: #0033cc; padding-bottom: 0; height: 16px; }
+
+            /* --- Attendance --- */
+            .attendance-head { border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-bottom: 4px; display: flex; justify-content: space-between; font-size: 11px; }
+            .attendance-grid { display: grid; margin-bottom: 8px; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+            .att-item { display: flex; align-items: center; font-size: 10px; }
+            .att-input { border-bottom: 1px dotted #000; width: 25px; text-align: center; margin: 0 2px; color: blue; }
+
+            /* --- Table --- */
+            table.head-eval-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin: 0; margin-bottom: -1px; border: 1px solid #000; border-top: none; }
+            table.head-eval-table th, table.head-eval-table td { border: 1px solid #000; padding: 3px; vertical-align: middle; }
+            table.head-eval-table th { background-color: #f0f0f0; font-weight: bold; text-align: center; height: 35px; font-size: 11px; }
             
-            .diagonal-cell { position: relative; width: 70px; padding: 0 !important; background: linear-gradient(to top right, transparent 48%, #000 49%, #000 51%, transparent 52%); }
-            .diag-top { position: absolute; top: 2px; right: 2px; font-size: 10px; text-align: right; line-height: 1; }
-            .diag-bottom { position: absolute; bottom: 2px; left: 2px; font-size: 10px; text-align: left; line-height: 1; }
+            .diagonal-cell { position: relative; width: 60px; padding: 0 !important; background: linear-gradient(to top right, transparent 48%, #000 49%, #000 51%, transparent 52%); }
+            .diag-top { position: absolute; top: 1px; right: 2px; font-size: 9px; text-align: right; line-height: 1; }
+            .diag-bottom { position: absolute; bottom: 1px; left: 2px; font-size: 9px; text-align: left; line-height: 1; }
             
-            .rating-circle { display: inline-block; width: 20px; height: 20px; border-radius: 50%; text-align: center; line-height: 18px; margin: 0 auto; }
+            .rating-circle { display: inline-block; width: 18px; height: 18px; border-radius: 50%; text-align: center; line-height: 16px; margin: 0 auto; font-size: 10px; }
             .selected { border: 2px solid #000; font-weight: bold; background: #ddd; }
+
+            /* --- Summary --- */
+            .summary-container { display: flex; border: 1px solid #000; border-top: none; margin-bottom: -1px; }
+            .opinion-part { width: 65%; padding: 8px; border-right: 1px solid #000; font-size: 11px; }
+            .score-part { width: 35%; padding: 8px; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
             
-            .summary-box { border: 1px solid #000; border-top: none; display: flex; }
-            .opinion-part { width: 65%; padding: 10px; border-right: 1px solid #000; }
-            .score-part { width: 35%; padding: 10px; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+            .checkbox-item { display: flex; align-items: flex-end; margin-bottom: 3px; }
+            .checkbox-box { width: 12px; height: 12px; border: 1px solid #000; display: inline-block; margin-right: 5px; position: relative; }
+            .checkbox-box.checked::after { content: '✓'; position: absolute; top: -4px; left: 0px; font-size: 14px; font-weight: bold; }
             
-            .checkbox-item { display: flex; align-items: flex-end; margin-bottom: 5px; }
-            .checkbox-box { width: 14px; height: 14px; border: 1px solid #000; display: inline-block; margin-right: 5px; position: relative; }
-            .checkbox-box.checked::after { content: '✓'; position: absolute; top: -4px; left: 1px; font-size: 16px; font-weight: bold; }
+            .score-row { display: flex; justify-content: space-between; border: 1px solid #000; padding: 4px; font-size: 11px; }
+            .score-val { font-weight: bold; font-size: 13px; }
             
-            .score-row { display: flex; justify-content: space-between; border: 1px solid #000; padding: 5px; }
-            .score-val { font-weight: bold; font-size: 14px; }
-            
-            .sig-row { display: flex; justify-content: flex-end; margin-top: 20px; align-items: flex-end; }
-            .sig-line { border-bottom: 1px dotted #000; width: 180px; text-align: center; position: relative; height: 30px; }
-            .sig-img { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); max-height: 40px; max-width: 150px; }
+            .sig-row { display: flex; justify-content: flex-end; margin-top: 15px; align-items: flex-end; }
+            .sig-line { border-bottom: 1px dotted #000; width: 160px; text-align: center; position: relative; height: 25px; }
+            .sig-img { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); max-height: 35px; max-width: 140px; }
             .sig-label { margin-right: 5px; font-weight: bold; }
-            
-            .footer { margin-top: 5px; font-size: 9px; text-align: right; color: #555; }
-            
-            /* ดันส่วนท้าย (HR Section) ให้ไปอยู่ด้านล่างสุดของกรอบเสมอ */
-            .bottom-section { margin-top: auto; border: 1px solid #000; border-top: none; padding: 15px; }
+
+            /* --- Footer --- */
+            .footer { margin-top: 5px; font-size: 8px; text-align: right; color: #555; font-style: italic; }
+
         </style>
     </head>
     <body>
-        <div class="page-a4">
-            <div class="frame-border">
-                
-                <div class="container">
-                    <header class="header">
-                        <div class="company-info" style = "width: 40%;">
-                            <div><strong>บริษัท คาร์เปท เมกเกอร์ (ประเทศไทย) จำกัด และ</strong></div>
-                            <div><strong>บริษัท คาร์เปท เมกเกอร์ พี2ดับบลิว (ประเทศไทย) จำกัด</strong></div>
-                            <div style="margin-top:2px;">The Carpet Maker (Thailand) Ltd. And</div>
-                            <div>The Carpet Maker P2W (Thailand) Ltd.</div>
-                        </div>
-                        <div class="form-title" style = "width: 60%; text-align: center;">
-                            <h1>แบบประเมินผลการทดลองงานของพนักงาน</h1>
-                            <p>Probation Evaluation Form</p>
-                        </div>
-                    </header>
-
-                    <div style="margin-bottom: 15px;">
-                        <div style="font-weight: bold; margin-bottom: 5px; border-bottom: 1px solid #000; display:inline-block;">ข้อมูลพนักงาน (Employee information)</div>
-                        <div class="info-row">
-                            <span class="field-label">ชื่อพนักงาน (Name):</span> <span class="field-value" style="flex:2;">${data.employeeName || ''}</span>
-                            <span class="field-label">รหัส (ID):</span> <span class="field-value" style="flex:1;">${data.employeeId || ''}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="field-label">ตำแหน่ง (Position):</span> <span class="field-value">${data.position || ''}</span>
-                            <span class="field-label">สังกัด (Section):</span> <span class="field-value">${data.section || ''}</span>
-                            <span class="field-label">แผนก (Dept):</span> <span class="field-value">${data.department || ''}</span>
-                        </div>
-                        <div class="info-row">
-                            <span class="field-label">เริ่มงานวันที่ (Start):</span> 
-                            <span class="field-value" style="width: 20px; flex:none;">${startD.d}</span>
-                            <span class="field-label">เดือน:</span> <span class="field-value" style="width: 75px; flex:none;">${startD.m}</span>
-                            <span class="field-label">พ.ศ.:</span> <span class="field-value" style="width: 35px; flex:none;">${startD.y}</span>
-                            <span style="flex-grow:1;"></span> <span class="field-label">ครบกำหนด (Due):</span> 
-                            <span class="field-value" style="width: 20px; flex:none;">${dueD.d}</span>
-                            <span class="field-label">เดือน:</span> <span class="field-value" style="width: 75px; flex:none;">${dueD.m}</span>
-                            <span class="field-label">พ.ศ.:</span> <span class="field-value" style="width: 35px; flex:none;">${dueD.y}</span>
-                        </div>
+        <div class="page-container">
+            
+            <div class="section-box">
+                <div class="header-content">
+                    <div class="company-info" style="width:35%">
+                        <div><strong>บริษัท คาร์เปท เมกเกอร์ (ประเทศไทย) จำกัด และ</strong></div>
+                        <div><strong>บริษัท คาร์เปท เมกเกอร์ พี2ดับบลิว (ประเทศไทย) จำกัด</strong></div>
+                        <div style="margin-top:2px;">The Carpet Maker (Thailand) Ltd. And</div>
+                        <div>The Carpet Maker P2W (Thailand) Ltd.</div>
                     </div>
-
-                    <div class="attendance-box">
-                        <div class="flex justify-between" style="border-bottom: 1px solid #ddd; padding-bottom:5px; margin-bottom:5px;">
-                            <strong>ข้อมูลสถิติการทำงาน (Time Attendance)</strong>
-                            <div style="font-size:11px;">
-                                จากวันที่: <span style="border-bottom:1px dotted #000; padding:0 10px;">${data.attendFrom || '-'}</span>
-                                ถึงวันที่: <span style="border-bottom:1px dotted #000; padding:0 10px;">${data.attendTo || '-'}</span>
-                            </div>
-                        </div>
-                        <div class="attendance-grid">
-                            <div class="att-item">ลาป่วย <span class="att-input">${data.sickLeave?.days || ''}</span> วัน <span class="att-input">${data.sickLeave?.hours || ''}</span> ชม.</div>
-                            <div class="att-item">ลากิจ <span class="att-input">${data.personalLeave?.days || ''}</span> วัน <span class="att-input">${data.personalLeave?.hours || ''}</span> ชม.</div>
-                            <div class="att-item">ลาอื่นๆ <span class="att-input">${data.otherLeave?.days || ''}</span> วัน <span class="att-input">${data.otherLeave?.hours || ''}</span> ชม.</div>
-                            <div class="att-item">สาย <span class="att-input">${data.late?.times || ''}</span> ครั้ง <span class="att-input">${data.late?.mins || ''}</span> นาที</div>
-                            <div class="att-item">ขาดงาน <span class="att-input">${data.absence?.days || ''}</span> วัน <span class="att-input">${data.absence?.hours || ''}</span> ชม.</div>
-                        </div>
+                    <div class="form-title" style="width:45%">
+                        <h1>แบบประเมินผลการทดลองงานของพนักงาน</h1>
+                        <p>Probation Evaluation Form</p>
                     </div>
+                </div>
+            </div>
 
-                    <div style="margin-top:15px; text-align:center; font-weight:bold; font-size:11px;">
-                        เขียนวงกลมล้อมรอบคะแนนที่ประเมินให้ (Write a circle around the rating that is evaluated)
+            <div class="section-box no-border-top">
+                <div style="font-weight: bold; margin-bottom: 5px; border-bottom: 1px solid #000; display:inline-block; font-size: 11px;">ข้อมูลพนักงาน (Employee information)</div>
+                <div class="info-row">
+                    <span class="field-label">ชื่อพนักงาน (Name):</span> <span class="field-value" style="flex:2;">${data.employeeName || ''}</span>
+                    <span class="field-label">รหัส (ID):</span> <span class="field-value" style="flex:1;">${data.employeeId || ''}</span>
+                </div>
+                <div class="info-row">
+                    <span class="field-label">ตำแหน่ง (Position):</span> <span class="field-value">${data.position || ''}</span>
+                    <span class="field-label">สังกัด (Section):</span> <span class="field-value">${data.section || ''}</span>
+                    <span class="field-label">แผนก (Dept):</span> <span class="field-value">${data.department || ''}</span>
+                </div>
+                <div class="info-row">
+                    <span class="field-label">เริ่มงานวันที่ (Start):</span> 
+                    <span class="field-value" style="width: 20px; flex:none;">${startD.d}</span>
+                    <span class="field-label">เดือน:</span> <span class="field-value" style="width: 70px; flex:none;">${startD.m}</span>
+                    <span class="field-label">พ.ศ.:</span> <span class="field-value" style="width: 30px; flex:none;">${startD.y}</span>
+                    <span style="flex-grow:1;"></span> <span class="field-label">ครบกำหนด (Due):</span> 
+                    <span class="field-value" style="width: 20px; flex:none;">${dueD.d}</span>
+                    <span class="field-label">เดือน:</span> <span class="field-value" style="width: 70px; flex:none;">${dueD.m}</span>
+                    <span class="field-label">พ.ศ.:</span> <span class="field-value" style="width: 30px; flex:none;">${dueD.y}</span>
+                </div>
+            </div>
+
+            <div class="section-box no-border-top">
+                <div class="attendance-head">
+                    <strong>ข้อมูลสถิติการทำงาน (Time Attendance)</strong>
+                    <div style="font-size:10px;">
+                        จากวันที่: <span style="border-bottom:1px dotted #000; padding:0 5px; display: inline-block; min-width: 80px; text-align: center;">${data.attendFrom || '-'}</span>
+                        ถึงวันที่: <span style="border-bottom:1px dotted #000; padding:0 5px; display: inline-block; min-width: 80px; text-align: center;">${data.attendTo || '-'}</span>
                     </div>
+                </div>
+                <div class="attendance-grid">
+                    <div class="att-item">ลาป่วย <span class="att-input">${data.sickLeave?.days || ''}</span> วัน <span class="att-input">${data.sickLeave?.hours || ''}</span> ชม.</div>
+                    <div class="att-item">ลากิจ <span class="att-input">${data.personalLeave?.days || ''}</span> วัน <span class="att-input">${data.personalLeave?.hours || ''}</span> ชม.</div>
+                    <div class="att-item">ลาอื่นๆ <span class="att-input">${data.otherLeave?.days || ''}</span> วัน <span class="att-input">${data.otherLeave?.hours || ''}</span> ชม.</div>
+                    <div class="att-item">สาย <span class="att-input">${data.late?.times || ''}</span> ครั้ง <span class="att-input">${data.late?.mins || ''}</span> นาที</div>
+                    <div class="att-item">ขาดงาน <span class="att-input">${data.absence?.days || ''}</span> วัน <span class="att-input">${data.absence?.hours || ''}</span> ชม.</div>
+                </div>
+            </div>
 
-                    <table class="head-eval-table">
-                        <thead>
+            <div class="section-box no-border-top" style="text-align:left; font-weight:bold; font-size:10px; padding: 4px;">
+                เขียนวงกลมล้อมรอบคะแนนที่ประเมินให้ (Write a circle around the rating that is evaluated)
+            </div>
+
+            <table class="head-eval-table">
+                <thead>
+                    <tr>
+                        <th rowspan="2" style="width:52%; text-align:center;">หัวข้อในการประเมิน<br><span style="font-weight:normal; font-style:italic;">(Evaluate Topic)</span></th>
+                        <th rowspan="2" class="diagonal-cell" style="font-size: 4px; width: 6%">
+                            <div class="diag-top" style="font-size: 7px;">คะแนน<br>Score</div>
+                            <div class="diag-bottom" style="font-size: 7px;">น้ำหนัก<br>Weight</div>
+                        </th>
+                        <th style="font-size: 8px; width: 6%">ใช้ไม่ได้<br>(Bad)<br>1</th>
+                        <th style="font-size: 8px; width: 6%">ต้องปรับปรุง<br>(Poor)<br>2</th>
+                        <th style="font-size: 8px; width: 6%">พอใช้<br>(Fair)<br>3</th>
+                        <th style="font-size: 8px; width: 6%">ดี<br>(Good)<br>4</th>
+                        <th style="font-size: 8px; width: 6%">ดีมาก<br>(Very Good)<br>5</th>
+                        <th style="font-size: 7px; width: 6%">ดีเยี่ยม<br>(Excellent)<br>6</th>
+                        <th style="font-size: 8px; width: 6%">ดีเลิศ<br>(Perfect)<br>7</th>
+                        <th rowspan="2" style="width:8%;">คะแนน<br>(Score)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    ${[
+                        {id:1, w:15, t:'ปริมาณงานที่ทำสำเร็จจากที่ได้มอบหมาย', e:'(The amount of work accomplished from the assignment)'},
+                        {id:2, w:15, t:'คุณภาพของงานที่ทำสำเร็จ', e:'(The quality of the complete work)'},
+                        {id:3, w:15, t:'การปฏิบัติตามคำสั่งของผู้บังคับบัญชาหรือตาม WI หรือ WP', e:'(Compliance with orders of supervisors or according to WI or WP)'},
+                        {id:4, w:10, t:'ความสามารถการเรียนรู้งานและความเข้าใจในงานที่ทำ', e:'(Ability to learn and understand the work)'},
+                        {id:5, w:10, t:'ความไว้วางใจและความรับผิดชอบในงานที่ได้รับมอบหมาย', e:'(Trust and responsibility in assigned work)'},
+                        {id:6, w:10, t:'ความร่วมมือในการทำงานเป็นทีม', e:'(Cooperation in Teamwork)'},
+                        {id:7, w:10, t:'การตรงต่อเวลาและความสม่ำเสมอในการมาทำงาน', e:'(Punctuality in working, quitting work and Consistency in working)'},
+                        {id:8, w:5,  t:'การเอาใจใส่ในการปฏิบัติตามกฎเรื่องความปลอดภัยและชีวอนามัยของบริษัทฯ', e:'(Caring for compliance the safety and health regulations of the company)'},
+                        {id:9, w:5,  t:'ความชื่อสัตย์ และทัศนคติที่ดีต่อบริษัท', e:'(Honesty and good attitude towards the company)'},
+                        {id:10, w:5, t:'การปฏิบัติตามกฎระเบียบและการรักษาทรัพย์สินของบริษัท', e:'(Compliance with rules and regulations for maintaining company assets)'}
+                    ].map(topic => {
+                        const score = data.ratings[topic.id];
+                        const calcScore = score ? ((topic.w / 7) * score).toFixed(2) : '';
+                        let tds = '';
+                        for(let i=1; i<=7; i++) {
+                            tds += `<td class="text-center"><div class="rating-circle ${score == i ? 'selected' : ''}">${i}</div></td>`;
+                        }
+                        return `
                             <tr>
-                                <th rowspan="2" style="width:52%; text-align:center;">หัวข้อในการประเมิน<br><span style="font-weight:normal; font-style:italic;">(Evaluate Topic)</span></th>
-                                <th rowspan="2" class="diagonal-cell" style="font-size: 4px; width: 6%">
-                                    <div class="diag-top" style="font-size: 6px;">คะแนน<br>Score</div>
-                                    <div class="diag-bottom" style="font-size: 6px;">น้ำหนัก<br>Weight</div>
-                                </th>
-                                <th style="font-size: 8px; width: 6%">ใช้ไม่ได้<br>(Bad)<br>1</th>
-                                <th style="font-size: 8px; width: 6%">ยังต่ำกว่าที่<br>ต้องการ<br>(Poor)<br>2</th>
-                                <th style="font-size: 8px; width: 6%">เกือบพอใช้<br>(Almost Fair)<br>3</th>
-                                <th style="font-size: 7px; width: 6%">พอใช้<br>(Fair)<br>4</th>
-                                <th style="font-size: 8px; width: 6%">ดี<br>(Good)<br>5</th>
-                                <th style="font-size: 8px; width: 6%">ดีมาก<br>(Very Good)<br>6</th>
-                                <th style="font-size: 8px; width: 6%">ดีเลิศ<br>(Excellent)<br>7</th>
-                                <th rowspan="2" style="width:8%;">คะแนน<br>(Score)</th>
+                                <td style="text-align: left;">
+                                    <div style="font-size:11px; color:#000000;">${topic.id}. ${topic.t}</div>
+                                    <div style="font-style:italic; font-size:10px; color:#555;">${topic.e}</div>
+                                </td>
+                                <td class="text-center">${topic.w}</td>
+                                ${tds}
+                                <td class="text-center font-bold">${calcScore}</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            ${[
-                                {id:1, w:15, t:'ปริมาณงานที่ทำสำเร็จจากที่ได้มอบหมาย', e:'(The amount of work accomplished from the assignment)'},
-                                {id:2, w:15, t:'คุณภาพของงานที่ทำสำเร็จ', e:'(The quality of the complete work)'},
-                                {id:3, w:15, t:'การปฏิบัติตามคำสั่งของผู้บังคับบัญชาหรือตาม WI หรือ WP', e:'(Compliance with orders of supervisors or according to WI or WP)'},
-                                {id:4, w:10, t:'ความสามารถการเรียนรู้งานและความเข้าใจในงานที่ทำ', e:'(Ability to learn and understand the work)'},
-                                {id:5, w:10, t:'ความไว้วางใจและความรับผิดชอบในงานที่ได้รับมอบหมาย', e:'(Trust and responsibility in assigned work)'},
-                                {id:6, w:10, t:'ความร่วมมือในการทำงานเป็นทีม', e:'(Cooperation in Teamwork)'},
-                                {id:7, w:10, t:'การตรงต่อเวลาและความสม่ำเสมอในการมาทำงาน', e:'(Punctuality in working, quitting work and Consistency in working)'},
-                                {id:8, w:5,  t:'การเอาใจใส่ในการปฏิบัติตามกฎเรื่องความปลอดภัยและชีวอนามัยของบริษัทฯ', e:'(Caring for compliance the safety and health regulations of the company)'},
-                                {id:9, w:5,  t:'ความชื่อสัตย์ และทัศนคติที่ดีต่อบริษัท', e:'(Honesty and good attitude towards the company)'},
-                                {id:10, w:5, t:'การปฏิบัติตามกฎระเบียบและการรักษาทรัพย์สินของบริษัท', e:'(Compliance with rules and regulations for maintaining company assets)'}
-                            ].map(topic => {
-                                const score = data.ratings[topic.id];
-                                const calcScore = score ? ((topic.w / 7) * score).toFixed(2) : '';
-                                let tds = '';
-                                for(let i=1; i<=7; i++) {
-                                    tds += `<td class="text-center"><div class="rating-circle ${score == i ? 'selected' : ''}">${i}</div></td>`;
-                                }
-                                return `
-                                    <tr>
-                                        <td style="text-align: left;">
-                                            <div style="font-size:11px; color:#000000;">${topic.id}. ${topic.t}</div>
-                                            <div style="font-style:italic; font-size:10px; color:#555;">${topic.e}</div>
-                                        </td>
-                                        <td class="text-center">${topic.w}</td>
-                                        ${tds}
-                                        <td class="text-center font-bold">${calcScore}</td>
-                                    </tr>
-                                `;
-                            }).join('')}
-                        </tbody>
-                        <tfoot>
-                            <tr style="background:#f9f9f9;">
-                                <td class="text-right font-bold" style="text-align: center;">คะแนนเต็ม (Full marks)</td>
-                                <td class="text-center font-bold">100</td>
-                                <td colspan="7"></td>
-                                <td class="text-center font-bold" style="font-size:14px;">${totalScore ? totalScore.toFixed(2) : ''}</td>
-                            </tr>
-                        </tfoot>
-                    </table>
+                        `;
+                    }).join('')}
+                </tbody>
+                <tfoot>
+                    <tr style="background:#f9f9f9; font-size: 11px;">
+                        <td class="text-right font-bold" style="text-align: center">คะแนนเต็ม (Full marks)</td>
+                        <td class="text-center font-bold">100</td>
+                        <td colspan="7"></td>
+                        <td class="text-center font-bold" style="font-size:13px;">${totalScore ? totalScore.toFixed(2) : ''}</td>
+                    </tr>
+                </tfoot>
+            </table>
 
-                    <div class="summary-box">
-                        <div class="opinion-part">
-                            <strong>ความเห็น (Opinion) :</strong>
-                            <div class="checkbox-item" style="margin-top:5px;">
-                                <div class="checkbox-box ${data.passProbation ? 'checked' : ''}"></div> ผ่านการทดลองงาน (Pass probation)
-                            </div>
-                            <div class="checkbox-item">
-                                <div class="checkbox-box ${data.notPassProbation ? 'checked' : ''}"></div> ไม่ผ่านการทดลองงาน (ระบุเหตุผล) : 
-                                <span class="border-b" style="width:200px; display:inline-block; color:blue;">${data.notPassReason || ''}</span>
-                            </div>
-                            <div class="checkbox-item">
-                                <div class="checkbox-box ${data.otherOpinion ? 'checked' : ''}"></div> อื่นๆ (Other) : 
-                                <span class="border-b" style="width:250px; display:inline-block; color:blue;">${data.otherOpinionText || ''}</span>
-                            </div>
-                            <div class="sig-row" style="justify-content: flex-start; margin-top:30px;">
-                                <span class="sig-label">ลงชื่อผู้ประเมิน (Assessor):</span>
-                                <div class="sig-line">
-                                    ${data.assessorSign ? `<img src="${data.assessorSign}" class="sig-img">` : ''}
-                                </div>
-                            </div>
-                        </div>
-                        <div class="score-part">
-                            <div class="score-row">
-                                <span>คะแนนรวม (Total):</span>
-                                <span class="score-val">${totalScore ? totalScore.toFixed(2) : '-'}</span>
-                            </div>
-                            <div class="score-row">
-                                <div>
-                                    <div>คะแนนเฉลี่ย</div>
-                                    <div style="font-size:9px; color:#666;">(รวม / 7)</div>
-                                </div>
-                                <span class="score-val">${avgScore ? avgScore.toFixed(2) : '-'}</span>
-                            </div>
-                        </div>
+            <div class="summary-container">
+                <div class="opinion-part">
+                    <strong>ความเห็น (Opinion) :</strong>
+                    <div class="checkbox-item" style="margin-top:10px;">
+                        <div class="checkbox-box ${data.passProbation ? 'checked' : ''}"></div> ผ่านการทดลองงาน (Pass probation)
                     </div>
-                </div> 
-
-                <div class="bottom-section">
-                    <div class="flex" style="margin-bottom:25px;">
-                        <span class="sig-label" style="min-width:150px;">ความเห็น HR:</span>
-                        <span class="border-b w-full" style="color:blue;">${data.hrOpinion || ''}</span>
+                    <div class="checkbox-item" style="margin-top:10px;">
+                        <div class="checkbox-box ${data.notPassProbation ? 'checked' : ''}"></div> ไม่ผ่านการทดลองงาน (ระบุเหตุผล) : 
+                        <span class="border-b" style="width:180px; display:inline-block; color:blue;">${data.notPassReason || ''}</span>
                     </div>
-                    <div class="flex justify-between" style="padding: 0 50px;">
-                        <div class="text-center">
-                            <div class="sig-line" style="margin:0 auto;">
-                                ${data.hrSign ? `<img src="${data.hrSign}" class="sig-img">` : ''}
-                            </div>
-                            <div style="margin-top:5px;">( ${hrTitle} )</div>
-                            <div style="font-size:10px;">ลงชื่อ (Sign)</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="sig-line" style="margin:0 auto;">
-                                ${data.approverSign ? `<img src="${data.approverSign}" class="sig-img">` : ''}
-                            </div>
-                            <div style="margin-top:5px;">( ${approverTitle} )</div>
-                            <div style="font-size:10px;">ผู้อนุมัติ (Approver)</div>
+                    <div class="checkbox-item" style="margin-top:10px;">
+                        <div class="checkbox-box ${data.otherOpinion ? 'checked' : ''}"></div> อื่นๆ (Other) : 
+                        <span class="border-b" style="width:220px; display:inline-block; color:blue;">${data.otherOpinionText || ''}</span>
+                    </div>
+                    <div class="sig-row" style="justify-content: flex-start; margin-top:20px;">
+                        <span class="sig-label">ลงชื่อผู้ประเมิน (Assessor):</span>
+                        <div class="sig-line">
+                            ${data.assessorSign ? `<img src="${data.assessorSign}" class="sig-img">` : ''}
                         </div>
                     </div>
                 </div>
-
-                <div class="footer">
-                    Form.FR-RC-007 แก้ไขครั้งที่ 02 เริ่มใช้วันที่ 17 กุมภาพันธ์ 2563 (Printed: ${printDateStr})
+                <div class="score-part">
+                    <div class="score-row">
+                        <span>คะแนนรวม (Total):</span>
+                        <span class="score-val">${totalScore ? totalScore.toFixed(2) : '-'}</span>
+                    </div>
+                    <div class="score-row">
+                        <div>
+                            <div>คะแนนเฉลี่ย</div>
+                            <div style="font-size:9px; color:#666;">(รวม / 7)</div>
+                        </div>
+                        <span class="score-val">${avgScore ? avgScore.toFixed(2) : '-'}</span>
+                    </div>
                 </div>
+            </div>
 
-            </div> </div> <script>
-            // window.onload = function() { setTimeout(function(){ window.print(); }, 500); }
+            <div class="section-box no-border-top">
+                <div class="flex" style="margin-bottom:10px; align-items: flex-end; font-size:11px;">
+                    <span class="sig-label" style="min-width:70px;">ความเห็น (Opinion) : แผนกบริหารทรัพยากรมนุษย์ (Human Resource Management Department):</span>
+                    <span class="border-b w-full" style="color:blue;">${data.hrOpinion || ''}</span>
+                </div>
+                <div class="flex justify-end" style="padding-right: 15px; text-align: right; font-size:11px;">
+                     <div class="text-center" style="text-align: right;">
+                        <div class="sig-line" style="margin:0 auto;">
+                            <span>ลงชื่อ</span>
+                            <span>${data.hrSign ? `<img src="${data.hrSign}" class="sig-img">` : ''}</span>
+                        </div>
+                        <div style="margin-top:5px; font-size:11px;">( ${hrTitle} )</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-box no-border-top">
+                <div class="flex" style="margin-bottom:10px; align-items: flex-end; font-size:11px;">
+                    <span class="sig-label" style="min-width:70px;">ผู้อนุมัติ (Approver)  : ประธานเจ้าหน้าที่บริหาร (Chief Executive Officer)</span>
+                    <span class="border-b w-full" style="color:blue;">${data.ceoOpinion || ''}</span>
+                </div>
+                <div class="text-center" style="text-align: right;">
+                    <div class="sig-line" style="margin:0 auto;">
+                        <span>ลงชื่อ</span>
+                        <span>${data.approverSign ? `<img src="${data.approverSign}" class="sig-img">` : ''}</span>
+                    </div>
+                    <div style="margin-top:5px; font-size:11px;">( ${approverTitle} )</div>
+                </div>
+            </div>
+
+            <div class="footer">
+                Form.FR-RC-007 แก้ไขครั้งที่ 02 เริ่มใช้วันที่ 17 กุมภาพันธ์ 2563 (Printed: ${printDateStr})
+            </div>
+
+        </div>
+        <script>
+            window.onload = function() { setTimeout(function(){ window.print(); }, 500); }
         </script>
     </body>
     </html>
