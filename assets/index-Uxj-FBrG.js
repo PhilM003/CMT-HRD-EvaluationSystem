@@ -308,4 +308,4 @@ Error generating stack: `+e.message+`
         <\/script>
     </body>
     </html>
-`,f=document.createElement(`iframe`);f.style.position=`absolute`,f.style.width=`0px`,f.style.height=`0px`,f.style.border=`none`,document.body.appendChild(f);let p=f.contentWindow.document;p.open(),p.write(d),p.close(),f.contentWindow.focus(),setTimeout(()=>{f.contentWindow.print(),setTimeout(()=>{document.body.removeChild(f)},2e3)},800)};(0,c.createRoot)(document.getElementById(`root`)).render((0,D.jsx)(l.StrictMode,{children:(0,D.jsx)(me,{})}));
+`,f=document.createElement(`iframe`);f.style.position=`absolute`,f.style.width=`0px`,f.style.height=`0px`,f.style.border=`none`,f.srcdoc=d,f.onload=()=>{setTimeout(()=>{f.contentWindow.focus(),f.contentWindow.print(),setTimeout(()=>{document.body.contains(f)&&document.body.removeChild(f)},3e3)},800)},document.body.appendChild(f)};(0,c.createRoot)(document.getElementById(`root`)).render((0,D.jsx)(l.StrictMode,{children:(0,D.jsx)(me,{})}));
