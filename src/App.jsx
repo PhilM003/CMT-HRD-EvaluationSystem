@@ -12,6 +12,7 @@ import logoImage from './assets/enterprise.png';
 // ⚠️ CONFIGURATION: ใส่ URL ของ Web App ล่าสุดที่ Deploy (ลงท้ายด้วย /exec)
 // ============================================================================
 const API_URL = 'https://script.google.com/macros/s/AKfycbwAL1ISDOIC_0TVh4RZniHn34vP0O7x5yBHlyxGZ1-u8ctgEg9OtG9dNMAZwxH7sNww/exec'; 
+// const API_URL = 'localhost:5000';
 const LOGO_URL = logoImage;
 
 // --- Helper: API Caller (แกะกล่องข้อมูลอัตโนมัติ) ---
@@ -617,16 +618,16 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
 
   // --- Helper Calculations ---
   const evaluationTopics = [
-    { id: 1, weight: 15, t: 'ปริมาณงานที่ทำสำเร็จ (Work Quantity)' },
-    { id: 2, weight: 15, t: 'คุณภาพของงาน (Work Quality)' },
-    { id: 3, weight: 15, t: 'การปฏิบัติตามคำสั่ง (Compliance)' },
-    { id: 4, weight: 10, t: 'การเรียนรู้งาน (Learning)' },
-    { id: 5, weight: 10, t: 'ความรับผิดชอบ (Responsibility)' },
-    { id: 6, weight: 10, t: 'การทำงานเป็นทีม (Teamwork)' },
-    { id: 7, weight: 10, t: 'การตรงต่อเวลา (Punctuality)' },
-    { id: 8, weight: 5,  t: 'ความปลอดภัย (Safety)' },
-    { id: 9, weight: 5,  t: 'ความซื่อสัตย์ (Honesty)' },
-    { id: 10, weight: 5, t: 'กฎระเบียบ (Rules)' }
+    { id: 1, weight: 15, t: 'ปริมาณงานที่ทำสำเร็จจากที่ได้มอบหมาย', e:'(The amount of work accomplished from the assignment)'},
+    { id: 2, weight: 15, t: 'คุณภาพของงานที่ทำสำเร็จ', e:'(The quality of the complete work)'},
+    { id: 3, weight: 15, t: 'การปฏิบัติตามคำสั่งของผู้บังคับบัญชาหรือตาม WI หรือ WP', e:'(Compliance with orders of supervisors or according to WI or WP)'},
+    { id: 4, weight: 10, t: 'ความสามารถการเรียนรู้งานและความเข้าใจในงานที่ทำ', e:'(Ability to learn and understand the work)'},
+    { id: 5, weight: 10, t: 'ความไว้วางใจและความรับผิดชอบในงานที่ได้รับมอบหมาย', e:'(Trust and responsibility in assigned work)'},
+    { id: 6, weight: 10, t: 'ความร่วมมือในการทำงานเป็นทีม', e:'(Cooperation in Teamwork)'},
+    { id: 7, weight: 10, t: 'การตรงต่อเวลาและความสม่ำเสมอในการมาทำงาน', e:'(Punctuality in working, quitting work and Consistency in working)'},
+    { id: 8, weight: 5,  t: 'การเอาใจใส่ในการปฏิบัติตามกฎเรื่องความปลอดภัยและชีวอนามัยของบริษัทฯ', e:'(Caring for compliance the safety and health regulations of the company)'},
+    { id: 9, weight: 5,  t: 'ความชื่อสัตย์ และทัศนคติที่ดีต่อบริษัท', e:'(Honesty and good attitude towards the company)'},
+    { id: 10, weight: 5, t: 'การปฏิบัติตามกฎระเบียบและการรักษาทรัพย์สินของบริษัท', e:'(Compliance with rules and regulations for maintaining company assets)'}
   ];
 
   useEffect(() => {
@@ -830,7 +831,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
         </div>
       </div>
 
-      <div className="text-center pt-2 pb-6 border-b border-secondary-silver/30">
+      <div className="bg-white border border-secondary-silver/50 rounded-2xl p-8 relative shadow-lg mb-8 mt-6 text-center">
           <h1 className="text-3xl font-extrabold text-primary-navy tracking-tight drop-shadow-sm">แบบประเมินผลการทดลองงาน</h1>
           <p className="text-neutral-medium text-lg mt-1 font-medium">Probation Evaluation Form</p>
       </div>
@@ -902,8 +903,9 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
                <div key={topic.id} className="p-4 rounded-xl border border-secondary-silver/30 hover:shadow-md transition-all bg-secondary-cream/10">
                   <div className="flex flex-col md:flex-row justify-between items-center gap-4">
                      <div className="flex-1">
-                        <span className="font-bold text-primary-navy mr-2">{topic.id}.</span>
-                        <span className="font-bold text-neutral-dark">{topic.t}</span>
+                        <span className="font-bold text-primary-navy mr-2" style={{fontSize: '14px'}}>{topic.id}.</span>
+                        <span className="font-bold text-neutral-dark " style={{fontSize: '14px'}}>{topic.t}</span><br></br>
+                        &emsp;&ensp;<span className="font-bold text-neutral-dark " style={{fontSize: '10px'}}>{topic.e}</span>
                         <span className="text-xs text-neutral-medium ml-2">(Weight: {topic.weight})</span>
                      </div>
                      <div className="flex gap-1.5">
@@ -1774,26 +1776,6 @@ const htmlContent = `
     </html>
 `;
 
-  // --- 🌟 MAGIC: ใช้ iFrame เพื่อพิมพ์โดยไม่เปิด Tab ใหม่ ---
-  const iframe = document.createElement('iframe');
-  iframe.style.position = 'absolute';
-  iframe.style.width = '0px';
-  iframe.style.height = '0px';
-  iframe.style.border = 'none';
-  document.body.appendChild(iframe);
-
-  const doc = iframe.contentWindow.document;
-  doc.open();
-  doc.write(htmlContent);
-  doc.close();
-
-  // รอให้รูปภาพและ Font โหลดเสร็จก่อนสั่งพิมพ์
-  iframe.contentWindow.focus();
-  setTimeout(() => {
-      iframe.contentWindow.print();
-      // ลบ iframe ทิ้งหลังจากพิมพ์เสร็จ (หน่วงเวลาเพิ่มเผื่อกด Cancel)
-      setTimeout(() => {
-          document.body.removeChild(iframe);
-      }, 2000);
-  }, 800); // เพิ่มเวลาหน่วงเล็กน้อยเพื่อให้มั่นใจว่า render เสร็จ
+  printWindow.document.write(htmlContent);
+  printWindow.document.close();
 };
