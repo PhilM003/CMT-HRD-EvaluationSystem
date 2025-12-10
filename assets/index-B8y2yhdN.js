@@ -27,15 +27,22 @@ Error generating stack: `+e.message+`
                 line-height: 1.3; 
             }
 
-            /* --- Page Setup (A4) --- */
-            @page { size: A4; margin: 10mm; } /* ตั้งขอบกระดาษที่นี่เลย */
+            /* --- Page Setup (A4 Scaled) --- */
+            @page { 
+                size: A4; 
+                margin: 0; /* ตัดขอบ Default ออกเพื่อให้เราคุมเอง */
+            }
             
-            .page-a4 {
-                width: 100%;
-                max-width: 210mm;
+            .page-container {
+                width: 210mm;
+                height: 297mm;
+                padding: 15mm 10mm; /* ระยะขอบกระดาษจริง (บนล่าง 15mm, ซ้ายขวา 10mm) */
                 margin: 0 auto;
                 background: white;
-                /* เอา padding และ border เดิมออก */
+                
+                /* 🔥 หัวใจสำคัญ: ย่อส่วนลง 95% เพื่อให้เหมือน PDF */
+                transform: scale(0.95); 
+                transform-origin: top center; /* ย่อโดยยึดจุดกึ่งกลางด้านบน */
             }
 
             /* --- Shared Classes --- */
@@ -44,75 +51,72 @@ Error generating stack: `+e.message+`
             .font-bold { font-weight: bold; }
             .flex { display: flex; }
             .justify-between { justify-content: space-between; }
+            .justify-end { justify-content: flex-end; }
             .w-full { width: 100%; }
             .border-b { border-bottom: 1px dotted #000; }
 
-            /* --- Section Box Style (กรอบสำหรับแต่ละส่วน) --- */
+            /* --- Section Box Style --- */
             .section-box {
                 border: 1px solid #000;
-                padding: 10px;
-                /* เทคนิค: ลบขอบล่างของกล่องก่อนหน้า (margin ติดลบ) เพื่อให้เส้นซ้อนทับกันเป็นเส้นเดียว */
+                padding: 8px 10px; /* ลด padding ลงนิดหน่อยให้กระชับ */
                 margin-bottom: -1px; 
             }
-            
-            /* คลาสสำหรับกล่องที่ต้องการซ่อนเส้นบน (ถ้าจำเป็นต้องใช้แยก) */
             .no-border-top { border-top: none !important; }
 
-            /* --- Header Specifics --- */
+            /* --- Header --- */
             .header-content { display: flex; align-items: center; }
-            .company-info { width: 45%; font-size: 11px; padding-right: 10px; border-right: 1px solid #000; }
+            .company-info { width: 45%; font-size: 10px; padding-right: 10px; border-right: 1px solid #000; line-height: 1.2; }
             .form-title { width: 55%; text-align: center; }
             .form-title h1 { font-size: 16px; margin: 0; font-weight: bold; }
             .form-title p { font-size: 12px; margin: 0; }
 
             /* --- Info Rows --- */
-            .info-row { display: flex; margin-bottom: 5px; gap: 10px; align-items: flex-end; }
+            .info-row { display: flex; margin-bottom: 4px; gap: 8px; align-items: flex-end; font-size: 11px; }
             .field-label { white-space: nowrap; font-weight: bold; }
-            .field-value { border-bottom: 1px dotted #000; flex-grow: 1; text-align: center; color: #0033cc; padding-bottom: 0; height: 18px; }
+            .field-value { border-bottom: 1px dotted #000; flex-grow: 1; text-align: center; color: #0033cc; padding-bottom: 0; height: 16px; }
 
             /* --- Attendance --- */
-            .attendance-head { border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 5px; display: flex; justify-content: space-between; }
-            .attendance-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-            .att-item { display: flex; align-items: center; font-size: 11px; }
-            .att-input { border-bottom: 1px dotted #000; width: 30px; text-align: center; margin: 0 2px; color: blue; }
+            .attendance-head { border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-bottom: 4px; display: flex; justify-content: space-between; font-size: 11px; }
+            .attendance-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+            .att-item { display: flex; align-items: center; font-size: 10px; }
+            .att-input { border-bottom: 1px dotted #000; width: 25px; text-align: center; margin: 0 2px; color: blue; }
 
-            /* --- Table Styles --- */
-            /* ปรับตารางให้เส้นขอบบนซ้อนทับกับกล่องก่อนหน้า */
-            table.head-eval-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin-top: 0; margin-bottom: -1px; border: 1px solid #000; border-top: none; }
-            table.head-eval-table th, table.head-eval-table td { border: 1px solid #000; padding: 4px; vertical-align: middle; }
-            table.head-eval-table th { background-color: #f0f0f0; font-weight: bold; text-align: center; height: 40px; }
+            /* --- Table --- */
+            table.head-eval-table { width: 100%; table-layout: fixed; border-collapse: collapse; margin: 0; margin-bottom: -1px; border: 1px solid #000; border-top: none; }
+            table.head-eval-table th, table.head-eval-table td { border: 1px solid #000; padding: 3px; vertical-align: middle; }
+            table.head-eval-table th { background-color: #f0f0f0; font-weight: bold; text-align: center; height: 35px; font-size: 11px; }
             
-            .diagonal-cell { position: relative; width: 70px; padding: 0 !important; background: linear-gradient(to top right, transparent 48%, #000 49%, #000 51%, transparent 52%); }
-            .diag-top { position: absolute; top: 2px; right: 2px; font-size: 10px; text-align: right; line-height: 1; }
-            .diag-bottom { position: absolute; bottom: 2px; left: 2px; font-size: 10px; text-align: left; line-height: 1; }
+            .diagonal-cell { position: relative; width: 60px; padding: 0 !important; background: linear-gradient(to top right, transparent 48%, #000 49%, #000 51%, transparent 52%); }
+            .diag-top { position: absolute; top: 1px; right: 2px; font-size: 9px; text-align: right; line-height: 1; }
+            .diag-bottom { position: absolute; bottom: 1px; left: 2px; font-size: 9px; text-align: left; line-height: 1; }
             
-            .rating-circle { display: inline-block; width: 20px; height: 20px; border-radius: 50%; text-align: center; line-height: 18px; margin: 0 auto; }
+            .rating-circle { display: inline-block; width: 18px; height: 18px; border-radius: 50%; text-align: center; line-height: 16px; margin: 0 auto; font-size: 10px; }
             .selected { border: 2px solid #000; font-weight: bold; background: #ddd; }
 
-            /* --- Summary Box --- */
+            /* --- Summary --- */
             .summary-container { display: flex; border: 1px solid #000; border-top: none; margin-bottom: -1px; }
-            .opinion-part { width: 65%; padding: 10px; border-right: 1px solid #000; }
-            .score-part { width: 35%; padding: 10px; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+            .opinion-part { width: 65%; padding: 8px; border-right: 1px solid #000; font-size: 11px; }
+            .score-part { width: 35%; padding: 8px; display: flex; flex-direction: column; justify-content: center; gap: 8px; }
             
-            .checkbox-item { display: flex; align-items: flex-end; margin-bottom: 5px; }
-            .checkbox-box { width: 14px; height: 14px; border: 1px solid #000; display: inline-block; margin-right: 5px; position: relative; }
-            .checkbox-box.checked::after { content: '✓'; position: absolute; top: -4px; left: 1px; font-size: 16px; font-weight: bold; }
+            .checkbox-item { display: flex; align-items: flex-end; margin-bottom: 3px; }
+            .checkbox-box { width: 12px; height: 12px; border: 1px solid #000; display: inline-block; margin-right: 5px; position: relative; }
+            .checkbox-box.checked::after { content: '✓'; position: absolute; top: -4px; left: 0px; font-size: 14px; font-weight: bold; }
             
-            .score-row { display: flex; justify-content: space-between; border: 1px solid #000; padding: 5px; }
-            .score-val { font-weight: bold; font-size: 14px; }
+            .score-row { display: flex; justify-content: space-between; border: 1px solid #000; padding: 4px; font-size: 11px; }
+            .score-val { font-weight: bold; font-size: 13px; }
             
-            .sig-row { display: flex; justify-content: flex-end; margin-top: 20px; align-items: flex-end; }
-            .sig-line { border-bottom: 1px dotted #000; width: 180px; text-align: center; position: relative; height: 30px; }
-            .sig-img { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); max-height: 40px; max-width: 150px; }
+            .sig-row { display: flex; justify-content: flex-end; margin-top: 15px; align-items: flex-end; }
+            .sig-line { border-bottom: 1px dotted #000; width: 160px; text-align: center; position: relative; height: 25px; }
+            .sig-img { position: absolute; bottom: 0; left: 50%; transform: translateX(-50%); max-height: 35px; max-width: 140px; }
             .sig-label { margin-right: 5px; font-weight: bold; }
 
-            /* --- Footer Styles --- */
-            .footer { margin-top: 10px; font-size: 9px; text-align: right; color: #555; }
+            /* --- Footer --- */
+            .footer { margin-top: 5px; font-size: 8px; text-align: right; color: #555; font-style: italic; }
 
         </style>
     </head>
     <body>
-        <div class="page-a4">
+        <div class="page-container">
             
             <div class="section-box">
                 <div class="header-content">
@@ -130,7 +134,7 @@ Error generating stack: `+e.message+`
             </div>
 
             <div class="section-box no-border-top">
-                <div style="font-weight: bold; margin-bottom: 5px; border-bottom: 1px solid #000; display:inline-block;">ข้อมูลพนักงาน (Employee information)</div>
+                <div style="font-weight: bold; margin-bottom: 5px; border-bottom: 1px solid #000; display:inline-block; font-size: 11px;">ข้อมูลพนักงาน (Employee information)</div>
                 <div class="info-row">
                     <span class="field-label">ชื่อพนักงาน (Name):</span> <span class="field-value" style="flex:2;">${e.employeeName||``}</span>
                     <span class="field-label">รหัส (ID):</span> <span class="field-value" style="flex:1;">${e.employeeId||``}</span>
@@ -143,21 +147,21 @@ Error generating stack: `+e.message+`
                 <div class="info-row">
                     <span class="field-label">เริ่มงานวันที่ (Start):</span> 
                     <span class="field-value" style="width: 20px; flex:none;">${c.d}</span>
-                    <span class="field-label">เดือน:</span> <span class="field-value" style="width: 75px; flex:none;">${c.m}</span>
-                    <span class="field-label">พ.ศ.:</span> <span class="field-value" style="width: 35px; flex:none;">${c.y}</span>
+                    <span class="field-label">เดือน:</span> <span class="field-value" style="width: 70px; flex:none;">${c.m}</span>
+                    <span class="field-label">พ.ศ.:</span> <span class="field-value" style="width: 30px; flex:none;">${c.y}</span>
                     <span style="flex-grow:1;"></span> <span class="field-label">ครบกำหนด (Due):</span> 
                     <span class="field-value" style="width: 20px; flex:none;">${l.d}</span>
-                    <span class="field-label">เดือน:</span> <span class="field-value" style="width: 75px; flex:none;">${l.m}</span>
-                    <span class="field-label">พ.ศ.:</span> <span class="field-value" style="width: 35px; flex:none;">${l.y}</span>
+                    <span class="field-label">เดือน:</span> <span class="field-value" style="width: 70px; flex:none;">${l.m}</span>
+                    <span class="field-label">พ.ศ.:</span> <span class="field-value" style="width: 30px; flex:none;">${l.y}</span>
                 </div>
             </div>
 
             <div class="section-box no-border-top">
                 <div class="attendance-head">
                     <strong>ข้อมูลสถิติการทำงาน (Time Attendance)</strong>
-                    <div style="font-size:11px;">
-                        จากวันที่: <span style="border-bottom:1px dotted #000; padding:0 10px;">${e.attendFrom||`-`}</span>
-                        ถึงวันที่: <span style="border-bottom:1px dotted #000; padding:0 10px;">${e.attendTo||`-`}</span>
+                    <div style="font-size:10px;">
+                        จากวันที่: <span style="border-bottom:1px dotted #000; padding:0 5px; display: inline-block; min-width: 80px; text-align: center;">${e.attendFrom||`-`}</span>
+                        ถึงวันที่: <span style="border-bottom:1px dotted #000; padding:0 5px; display: inline-block; min-width: 80px; text-align: center;">${e.attendTo||`-`}</span>
                     </div>
                 </div>
                 <div class="attendance-grid">
@@ -169,7 +173,7 @@ Error generating stack: `+e.message+`
                 </div>
             </div>
 
-            <div class="section-box no-border-top" style="text-align:center; font-weight:bold; font-size:11px; padding: 5px;">
+            <div class="section-box no-border-top" style="text-align:center; font-weight:bold; font-size:10px; padding: 4px;">
                 เขียนวงกลมล้อมรอบคะแนนที่ประเมินให้ (Write a circle around the rating that is evaluated)
             </div>
 
@@ -178,8 +182,8 @@ Error generating stack: `+e.message+`
                     <tr>
                         <th rowspan="2" style="width:52%; text-align:center;">หัวข้อในการประเมิน<br><span style="font-weight:normal; font-style:italic;">(Evaluate Topic)</span></th>
                         <th rowspan="2" class="diagonal-cell" style="font-size: 4px; width: 6%">
-                            <div class="diag-top" style="font-size: 6px;">คะแนน<br>Score</div>
-                            <div class="diag-bottom" style="font-size: 6px;">น้ำหนัก<br>Weight</div>
+                            <div class="diag-top" style="font-size: 7px;">คะแนน<br>Score</div>
+                            <div class="diag-bottom" style="font-size: 7px;">น้ำหนัก<br>Weight</div>
                         </th>
                         <th style="font-size: 8px; width: 6%">ใช้ไม่ได้<br>(Bad)<br>1</th>
                         <th style="font-size: 8px; width: 6%">ต้องปรับปรุง<br>(Poor)<br>2</th>
@@ -205,11 +209,11 @@ Error generating stack: `+e.message+`
                         `}).join(``)}
                 </tbody>
                 <tfoot>
-                    <tr style="background:#f9f9f9;">
-                        <td class="text-right font-bold">คะแนนเต็ม (Full marks)</td>
+                    <tr style="background:#f9f9f9; font-size: 11px;">
+                        <td class="text-right font-bold" style="text-align: center">คะแนนเต็ม (Full marks)</td>
                         <td class="text-center font-bold">100</td>
                         <td colspan="7"></td>
-                        <td class="text-center font-bold" style="font-size:14px;">${t?t.toFixed(2):``}</td>
+                        <td class="text-center font-bold" style="font-size:13px;">${t?t.toFixed(2):``}</td>
                     </tr>
                 </tfoot>
             </table>
@@ -222,13 +226,13 @@ Error generating stack: `+e.message+`
                     </div>
                     <div class="checkbox-item">
                         <div class="checkbox-box ${e.notPassProbation?`checked`:``}"></div> ไม่ผ่านการทดลองงาน (ระบุเหตุผล) : 
-                        <span class="border-b" style="width:200px; display:inline-block; color:blue;">${e.notPassReason||``}</span>
+                        <span class="border-b" style="width:180px; display:inline-block; color:blue;">${e.notPassReason||``}</span>
                     </div>
                     <div class="checkbox-item">
                         <div class="checkbox-box ${e.otherOpinion?`checked`:``}"></div> อื่นๆ (Other) : 
-                        <span class="border-b" style="width:250px; display:inline-block; color:blue;">${e.otherOpinionText||``}</span>
+                        <span class="border-b" style="width:220px; display:inline-block; color:blue;">${e.otherOpinionText||``}</span>
                     </div>
-                    <div class="sig-row" style="justify-content: flex-start; margin-top:30px;">
+                    <div class="sig-row" style="justify-content: flex-start; margin-top:20px;">
                         <span class="sig-label">ลงชื่อผู้ประเมิน (Assessor):</span>
                         <div class="sig-line">
                             ${e.assessorSign?`<img src="${e.assessorSign}" class="sig-img">`:``}
@@ -251,28 +255,28 @@ Error generating stack: `+e.message+`
             </div>
 
             <div class="section-box no-border-top">
-                <div class="flex" style="margin-bottom:15px; align-items: flex-end;">
-                    <span class="sig-label" style="min-width:80px;">ความเห็น HR:</span>
+                <div class="flex" style="margin-bottom:10px; align-items: flex-end; font-size:11px;">
+                    <span class="sig-label" style="min-width:70px;">ความเห็น HR:</span>
                     <span class="border-b w-full" style="color:blue;">${e.hrOpinion||``}</span>
                 </div>
-                <div class="flex justify-end" style="padding-right: 20px;">
+                <div class="flex justify-end" style="padding-right: 15px; text-align: right; font-size:11px;">
                      <div class="text-center">
                         <div class="sig-line" style="margin:0 auto;">
                             ${e.hrSign?`<img src="${e.hrSign}" class="sig-img">`:``}
                         </div>
-                        <div style="margin-top:5px;">( ${a} )</div>
-                        <div style="font-size:10px;">ลงชื่อ (Sign)</div>
+                        <div style="margin-top:5px; font-size:11px;">( ${a} )</div>
+                        <div style="font-size:9px;">ลงชื่อ (Sign)</div>
                     </div>
                 </div>
             </div>
 
-            <div class="section-box no-border-top" style="display:flex; justify-content:flex-end; padding-right:30px;">
+            <div class="section-box no-border-top" style="display:flex; justify-content:flex-end; padding-right:15px; padding-bottom: 20px;">
                 <div class="text-center">
                     <div class="sig-line" style="margin:0 auto;">
                         ${e.approverSign?`<img src="${e.approverSign}" class="sig-img">`:``}
                     </div>
-                    <div style="margin-top:5px;">( ${o} )</div>
-                    <div style="font-size:10px;">ผู้อนุมัติ (Approver)</div>
+                    <div style="margin-top:5px; font-size:11px;">( ${o} )</div>
+                    <div style="font-size:9px;">ผู้อนุมัติ (Approver)</div>
                 </div>
             </div>
 
