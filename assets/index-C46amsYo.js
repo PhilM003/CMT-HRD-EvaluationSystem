@@ -284,7 +284,7 @@ Error generating stack: `+e.message+`
                   <div style="display:flex; align-items:flex-end; gap:5px;">
                       <span class="sig-label">(Chief Executive Officer) : </span>
                       <span class="border-b" style="flex:1; color:blue; display:inline-block;">
-                          ${e.ceoOpinion||``}
+                          ${e.approverOpinion||``}
                       </span>
                   </div>
                 </div>
