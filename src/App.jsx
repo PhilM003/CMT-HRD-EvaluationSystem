@@ -781,33 +781,37 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
         setGlobalLoading(true);
         const savedData = await apiCall(updatedFormData);
         
-        // --- 🟢 เริ่มจุดที่ต้องแก้ (บรรทัดเดิมประมาณ 530) ---
+        // --- ส่วนที่แก้ไข ---
         
-        // 1. อัปเดต State ให้เรียบร้อยก่อน
-        setDbId(savedData.id);
-        setFormData(savedData);
+        // 1. ลองดึง ID จากทุกชื่อที่เป็นไปได้ (id หรือ eva_id)
+        const returnedId = savedData.id || savedData.eva_id; 
+        
+        // 2. ถ้าไม่มีใน savedData ให้หาจาก State เก่า (dbId หรือ formData)
+        const safeEvalId = returnedId || dbId || formData.id || formData.eva_id; 
+
+        // อัปเดต State (สำคัญ: ต้อง setDbId ด้วย safeEvalId)
+        setDbId(safeEvalId); 
+        setFormData(prev => ({ ...prev, ...savedData })); // Merge ข้อมูลใหม่
         setStatus(newStatus);
         setSignatureModalOpen(false);
 
-        // 2. ✅ แก้ไข: สร้างตัวแปร ID ให้ชัวร์ที่สุด (กันไว้ 3 ชั้น)
-        // ถ้า savedData.id ไม่มี -> ให้ใช้ dbId เดิม -> ถ้าไม่มีให้ใช้ formData.id
-        const safeEvalId = savedData.id || dbId || formData.id; 
+        // Debug: ดูค่า ID ใน Console (กด F12 ดูได้เลย)
+        console.log("Sending Email with ID:", safeEvalId); 
 
         if (!safeEvalId) {
-            console.error("❌ Error: Missing Evaluation ID for Email");
-            alert("บันทึกได้ แต่สร้าง Link อีเมลไม่ได้เนื่องจากไม่พบ ID");
+            alert("⚠️ เตือน: ไม่พบ ID ใบประเมิน ลิงก์ในอีเมลอาจไม่ขึ้น");
         }
 
-        // 3. ส่ง Email โดยใช้ safeEvalId ที่เราเตรียมไว้
+        // 3. ส่ง Email (ใช้ safeEvalId)
         await sendGmailNotification(
             savedData.employeeName || formData.employeeName, 
             status, 
             newStatus, 
-            safeEvalId, // <--- ใช้ตัวแปรนี้แทน savedData.id
+            safeEvalId, // <--- ส่ง ID ที่ถูกต้อง
             appSettings
         );
 
-        // --- 🔴 จบจุดที่ต้องแก้ ---
+        // ------------------
 
         if (autoOpenSignRole) {
             setIsComplete(true); 
