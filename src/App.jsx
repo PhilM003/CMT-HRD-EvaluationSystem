@@ -952,6 +952,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
 
       {/* --- BOTTOM BAR --- */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-secondary-silver p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.1)] flex justify-center items-center gap-4 z-40 animate-in slide-in-from-bottom-2">
+          {/* ✅ เรียกใช้ handlePrint ของไฟล์นี้ */}
           <button onClick={() => handlePrint(formData, totalScore, avgScore, appSettings)} className="flex items-center gap-2 bg-gray-600 hover:bg-gray-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg transition-transform hover:-translate-y-1">
              <Printer size={20}/> พิมพ์
           </button>
@@ -966,7 +967,6 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
 };
 
 // --- Helper Components ---
-
 const LeaveInput = ({ label, name, data, onChange, disabled, isLate, isAbsence }) => {
     let daysKey = 'days';
     let hoursKey = 'hours';
@@ -1774,6 +1774,26 @@ const htmlContent = `
     </html>
 `;
 
-  printWindow.document.write(htmlContent);
-  printWindow.document.close();
+  // --- 🌟 MAGIC: ใช้ iFrame เพื่อพิมพ์โดยไม่เปิด Tab ใหม่ ---
+  const iframe = document.createElement('iframe');
+  iframe.style.position = 'absolute';
+  iframe.style.width = '0px';
+  iframe.style.height = '0px';
+  iframe.style.border = 'none';
+  document.body.appendChild(iframe);
+
+  const doc = iframe.contentWindow.document;
+  doc.open();
+  doc.write(htmlContent);
+  doc.close();
+
+  // รอให้รูปภาพและ Font โหลดเสร็จก่อนสั่งพิมพ์
+  iframe.contentWindow.focus();
+  setTimeout(() => {
+      iframe.contentWindow.print();
+      // ลบ iframe ทิ้งหลังจากพิมพ์เสร็จ (หน่วงเวลาเพิ่มเผื่อกด Cancel)
+      setTimeout(() => {
+          document.body.removeChild(iframe);
+      }, 2000);
+  }, 800); // เพิ่มเวลาหน่วงเล็กน้อยเพื่อให้มั่นใจว่า render เสร็จ
 };
