@@ -262,8 +262,7 @@ Error generating stack: `+e.message+`
                 <div class="flex justify-end" style="padding-right: 15px; text-align: right; font-size:11px;">
                      <div class="text-center" style="text-align: right;">
                         <div class="sig-line" style="margin:0 auto;">
-                            <span>ลงชื่อ</span>
-                            <span>${e.hrSign?`<img src="${e.hrSign}" class="sig-img">`:``}</span>
+                            <span>ลงชื่อ${e.hrSign?`<img src="${e.hrSign}" class="sig-img">`:``}</span>
                         </div>
                         <div style="margin-top:5px; font-size:11px;">( ${a} )</div>
                     </div>
@@ -275,10 +274,9 @@ Error generating stack: `+e.message+`
                     <span class="sig-label" style="min-width:70px;">ผู้อนุมัติ (Approver)  : ประธานเจ้าหน้าที่บริหาร (Chief Executive Officer)</span>
                     <span class="border-b w-full" style="color:blue;">${e.ceoOpinion||``}</span>
                 </div>
-                <div class="text-center" style="text-align: right;">
-                    <div class="sig-line" style="margin:0 auto;">
-                        <span>ลงชื่อ</span>
-                        <span>${e.approverSign?`<img src="${e.approverSign}" class="sig-img">`:``}</span>
+                <div class="flex justify-end" style="padding-right: 15px; text-align: right; font-size:11px;">
+                    <div class="text-center" style="text-align: right;">
+                        <span>ลงชื่อ${e.approverSign?`<img src="${e.approverSign}" class="sig-img">`:``}</span>
                     </div>
                     <div style="margin-top:5px; font-size:11px;">( ${o} )</div>
                 </div>
