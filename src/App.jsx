@@ -780,7 +780,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
               <CheckCircle size={64} className="text-green-600" />
            </div>
            <h1 className="text-3xl font-extrabold text-primary-navy mb-4 text-center">ได้รับการรับรองจากท่านเรียบร้อย</h1>
-           <p className="text-neutral-medium mb-10 text-center text-lg max-w-md">ขอบคุณสำหรับความร่วมมือ ข้อมูลของท่านถูกบันทึกเข้าสู่ระบบอย่างสมบูรณ์แล้ว</p>
+           <p className="text-neutral-medium mb-10 text-center text-lg max-w-md">ข้อมูลของท่านถูกบันทึกเข้าสู่ระบบอย่างสมบูรณ์แล้ว</p>
            
            <button 
              onClick={() => { window.location.href = 'https://www.google.com'; }} // หรือปิด Tab
@@ -1434,6 +1434,7 @@ const sendGmailNotification = async (employeeName, currentStatus, nextStatus, ev
   const hrTitle = settings?.role_hr_title || 'HR Manager';
   const approverTitle = settings?.role_approver_title || 'CEO';
   
+  const emailSystem = settings?.email_system || 'carpetmaker05@gmail.com';
   const emailHR = settings?.email_hr || 'carpetmaker05@gmail.com';
   const emailApprover = settings?.email_approver || 'carpetmaker05@gmail.com';
 
@@ -1455,7 +1456,7 @@ const sendGmailNotification = async (employeeName, currentStatus, nextStatus, ev
       signRole = 'approver';
   } 
   else if (nextStatus === 'completed') {
-      toEmail = emailHR; 
+      toEmail = emailSystem; 
       // ✅ เพิ่ม Ref ID ท้ายหัวข้อ
       subject = `[Completed] ผลประเมิน ${employeeName} เสร็จสมบูรณ์ (Ref: ${refId})`;
       messageHtml = `<p>การประเมินเสร็จสิ้นแล้ว</p>`;
