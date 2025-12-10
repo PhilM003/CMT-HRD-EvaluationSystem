@@ -544,16 +544,16 @@ const DashboardView = ({ evaluations = [], onCreate, onEdit, onDelete, onManageE
 };
 
 // ==========================================
-// EVALUATION FORM COMPONENT (FIXED & IMPROVED)
+// EVALUATION FORM COMPONENT (STRICT SAVE FIX)
 // ==========================================
 const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, onSaveComplete, autoOpenSignRole, setGlobalLoading, appSettings }) => {
   // --- State ---
   const [status, setStatus] = useState(initialData?.status || 'draft');
   const [dbId, setDbId] = useState(initialData?.id || null);
   
-  // State สำหรับ Modal ต่างๆ
-  const [showGuestSuccessModal, setShowGuestSuccessModal] = useState(false); // สำหรับ Guest (จบงาน)
-  const [showRedirectModal, setShowRedirectModal] = useState(false); // ✅ ใหม่: สำหรับ Admin (กำลังกลับ Dashboard)
+  // State สำหรับ Modal
+  const [showGuestSuccessModal, setShowGuestSuccessModal] = useState(false); 
+  const [showRedirectModal, setShowRedirectModal] = useState(false); 
   
   // --- Initialize Form Data ---
   const initialFormData = {
@@ -562,7 +562,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     sickLeave: { days: '', hours: '' }, personalLeave: { days: '', hours: '' }, otherLeave: { days: '', hours: '' }, late: { times: '', mins: '' }, absence: { days: '', hours: '' },
     ratings: {},
     passProbation: false, notPassProbation: false, notPassReason: '', otherOpinion: false, otherOpinionText: '',
-    assessorSign: '', hrOpinion: '', hrSign: '', approverSign: '' 
+    assessorSign: '', hrOpinion: '', hrSign: '', approverSign: '', approverOpinion: '' // ✅ เพิ่ม approverOpinion ชัดเจน
   };
 
   const [formData, setFormData] = useState(() => {
@@ -573,6 +573,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
   // --- Sync Initial Data ---
   useEffect(() => {
     if (initialData) {
+      console.log("📥 Syncing Data:", initialData);
       setFormData(prev => ({ ...prev, ...initialData, ratings: initialData.ratings || {} }));
       setStatus(initialData.status || 'draft');
       setDbId(initialData.id);
@@ -588,7 +589,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
 
        if (isHRTurn || isApproverTurn || isAssessorTurn) {
            const timer = setTimeout(() => {
-               // openSignaturePad(autoOpenSignRole); // (Optional: เปิด Auto ได้ถ้าต้องการ)
+               // openSignaturePad(autoOpenSignRole); 
            }, 800);
            return () => clearTimeout(timer);
        }
@@ -604,7 +605,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
   // --- Permission Logic ---
   const isGuest = !!autoOpenSignRole; 
   const canEdit = (section) => {
-      if (!isGuest) return true; // Admin/User หลัก แก้ได้หมด
+      if (!isGuest) return true; 
       if (status === 'completed') return false;
       if (autoOpenSignRole === 'assessor') {
          if (section === 'hr' || section === 'approver') return false;
@@ -638,7 +639,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     setAvgScore(weightedSum / 7);
   }, [formData.ratings]);
 
-  // --- Input Handlers (ย่อ) ---
+  // --- Input Handlers ---
   const handleNameSearch = (e) => { setFormData(prev => ({ ...prev, employeeName: e.target.value })); setShowEmployeeDropdown(true); };
   const selectEmployee = (emp) => {
     setFormData(prev => ({ ...prev, employeeName: emp.name, employeeId: emp.id, position: emp.position, section: emp.section, department: emp.department, startDate: emp.startDate, dueProbationDate: emp.dueProbation }));
@@ -680,7 +681,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
   };
 
   // ========================================================
-  // ✅ LOGIC: Main Save Function (Fixed)
+  // ✅ LOGIC: Main Save Function (STRICT MODE)
   // ========================================================
   const handleMainSave = async () => {
     if (!formData.employeeName) return alert("❌ กรุณาระบุชื่อพนักงาน");
@@ -692,10 +693,21 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     else if (formData.assessorSign) newStatus = 'pending_hr';
     else newStatus = 'draft';
 
-    setGlobalLoading(true); // โชว์ Loading หมุนๆ
+    setGlobalLoading(true); 
     
-    // 1. Force ID
-    const forcedId = dbId || formData.id || formData.eva_id || Date.now().toString();
+    // 1. Force ID & Validation
+    const rawId = dbId || formData.id || formData.eva_id;
+    
+    // 🛡️ CRITICAL FIX: ถ้าเป็น Guest (คนมาเซ็น) ห้ามสร้าง ID ใหม่เด็ดขาด ต้องมี ID เดิมเท่านั้น
+    // เพื่อป้องกันการสร้าง Record ใหม่ซ้อนทับอันเดิม
+    if (isGuest && (!rawId || rawId === 'undefined')) {
+        setGlobalLoading(false);
+        alert("❌ ไม่พบ ID ของเอกสาร (Missing Document ID)\n\nระบบไม่สามารถบันทึกได้เนื่องจากลิงก์อาจไม่สมบูรณ์ กรุณาเข้าลิงก์ใหม่อีกครั้ง หรือติดต่อผู้ดูแลระบบ");
+        return;
+    }
+
+    // ถ้าไม่ใช่ Guest (สร้างใหม่) ถึงจะอนุญาตให้ใช้ Date.now()
+    const forcedId = rawId ? String(rawId) : String(Date.now()); 
     
     const payload = {
         ...formData,
@@ -708,44 +720,47 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
     };
 
     try {
-        // 2. เรียก API และ **รอผลลัพธ์**
+        console.log("💾 Saving Payload:", payload);
         const response = await apiCall(payload);
 
-        // 🛡️ เช็คความถูกต้อง: ถ้า response ว่างเปล่า หรือ success = false ให้หยุดทันที
-        if (!response || (response.success === false)) {
-            throw new Error(response?.message || "บันทึกข้อมูลไม่สำเร็จ (No Response)");
+        // 🛡️ Double Check Response
+        if (!response) throw new Error("Server ไม่ตอบสนอง (No Response)");
+        
+        // เช็คว่า Backend ตอบกลับมาว่า Success หรือคืนค่า ID กลับมา
+        const isSuccess = response.success === true || !!response.id || !!response.eva_id;
+        
+        if (!isSuccess) {
+             console.error("Save Error Response:", response);
+             throw new Error(response.message || "บันทึกไม่สำเร็จ (Unknown Error)");
         }
         
         // --- ถ้ามาถึงตรงนี้แปลว่าบันทึกสำเร็จจริง ---
-        
         setDbId(forcedId);
         setStatus(newStatus);
-        setFormData(payload); // อัปเดต state ด้วยข้อมูลที่ส่งไป
+        setFormData(prev => ({ ...prev, ...payload })); 
 
-        // 3. ส่ง Email (เฉพาะเมื่อสถานะเปลี่ยน หรือ เป็น Guest)
+        // 3. ส่ง Email
         if (newStatus !== status || isGuest) {
             console.log("📨 Sending Email...");
             await sendGmailNotification(formData.employeeName, status, newStatus, forcedId, appSettings);
         }
 
+        setGlobalLoading(false);
+
         // 4. แยกการทำงานหลังบันทึก
         if (isGuest) {
-             // ถ้าเป็น Guest -> โชว์หน้า Success ค้างไว้
              setShowGuestSuccessModal(true);
         } else {
-             // ถ้าเป็น Admin/User -> โชว์หน้า Redirect Modal (หน่วงเวลา 2 วิ)
              setShowRedirectModal(true);
-             
              setTimeout(() => {
-                 onSaveComplete(); // กลับ Dashboard
-             }, 2000);
+                 onSaveComplete(); 
+             }, 3000); 
         }
 
     } catch (e) {
-        console.error("Save Error:", e);
-        alert("❌ เกิดข้อผิดพลาดในการบันทึก: " + e.message + "\n(กรุณาลองใหม่อีกครั้ง)");
-    } finally {
-        setGlobalLoading(false); // ปิด Loading หมุนๆ
+        setGlobalLoading(false);
+        console.error("Save Exception:", e);
+        alert("❌ เกิดข้อผิดพลาดในการบันทึก: " + e.message + "\n(กรุณาลองกดบันทึกใหม่อีกครั้ง)");
     }
   };
 
@@ -757,7 +772,7 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
               <CheckCircle size={64} className="text-green-600" />
            </div>
            <h1 className="text-3xl font-extrabold text-primary-navy mb-4 text-center">ได้รับการรับรองเรียบร้อย</h1>
-           <p className="text-neutral-medium mb-10 text-center text-lg max-w-md">ขอบคุณสำหรับความร่วมมือ ข้อมูลของท่านถูกบันทึกและส่งอีเมลแจ้งเตือนเรียบร้อยแล้ว</p>
+           <p className="text-neutral-medium mb-10 text-center text-lg max-w-md">ข้อมูลของท่านถูกบันทึกและส่งอีเมลแจ้งเตือนเรียบร้อยแล้ว</p>
            
            <button onClick={() => { window.location.href = 'https://www.google.com'; }} className="px-10 py-4 bg-primary-navy text-white hover:bg-accent-royalblue font-bold rounded-2xl transition-all shadow-lg hover:shadow-xl hover:-translate-y-1 flex items-center gap-2">
              <LogOut size={20}/> ออกจากหน้านี้
@@ -766,18 +781,23 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
       );
   }
 
-  // --- Render: Admin Redirect Modal (✅ หน้าใหม่สำหรับรอ) ---
+  // --- Render: Admin Redirect Modal ---
   if (showRedirectModal) {
       return (
-        <div className="fixed inset-0 bg-white/90 backdrop-blur-sm z-[70] flex flex-col items-center justify-center animate-in fade-in duration-300">
-           <div className="bg-white p-8 rounded-3xl shadow-2xl border border-secondary-silver flex flex-col items-center max-w-sm w-full">
-               <div className="w-16 h-16 border-4 border-primary-navy border-t-transparent rounded-full animate-spin mb-6"></div>
-               <h2 className="text-xl font-bold text-primary-navy mb-2">บันทึกข้อมูลสำเร็จ!</h2>
-               <p className="text-gray-500 text-sm mb-4">Saved Successfully</p>
-               <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
-                   <div className="h-full bg-green-500 animate-[width_2s_ease-out_forwards]" style={{width: '0%'}}></div>
+        <div className="fixed inset-0 bg-white/95 backdrop-blur-sm z-[70] flex flex-col items-center justify-center animate-in fade-in duration-300">
+           <div className="bg-white p-10 rounded-3xl shadow-2xl border border-secondary-silver flex flex-col items-center max-w-sm w-full transform scale-110">
+               <div className="relative mb-6">
+                   <div className="w-20 h-20 border-4 border-primary-navy/20 border-t-primary-navy rounded-full animate-spin"></div>
+                   <div className="absolute inset-0 flex items-center justify-center">
+                        <CheckCircle size={32} className="text-green-500 animate-in zoom-in duration-500"/>
+                   </div>
                </div>
-               <p className="text-xs text-gray-400 mt-4">กำลังพาท่านกลับสู่ Dashboard...</p>
+               <h2 className="text-2xl font-bold text-primary-navy mb-2">บันทึกข้อมูลสำเร็จ!</h2>
+               <p className="text-gray-500 text-sm mb-6">System Saved Successfully</p>
+               <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden mb-2">
+                   <div className="h-full bg-green-500 animate-[width_3s_ease-out_forwards]" style={{width: '0%'}}></div>
+               </div>
+               <p className="text-xs text-gray-400 font-bold animate-pulse">กำลังพาท่านกลับสู่ Dashboard...</p>
            </div>
         </div>
       );
