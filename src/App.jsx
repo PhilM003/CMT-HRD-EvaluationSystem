@@ -939,10 +939,10 @@ const EvaluationForm = ({ initialData, employeeList = [], currentRole, onBack, o
           <div className="space-y-3 mb-8">
               <SummaryOption label="ผ่านการทดลองงาน" checked={formData.passProbation} onClick={()=>handleOpinionChange('pass')} disabled={isReadOnly('general')}/>
               <SummaryOption label="ไม่ผ่านการทดลองงาน" checked={formData.notPassProbation} onClick={()=>handleOpinionChange('notPass')} disabled={isReadOnly('general')}>
-                  {formData.notPassProbation && <input type="text" value={formData.notPassReason} onChange={handleInputChange} name="notPassReason" className="w-full border-b border-red-300 outline-none text-red-700 mt-2" placeholder="ระบุเหตุผล..."/>}
+                  {formData.notPassProbation && <input type="text" value={formData.notPassReason} onChange={handleInputChange} name="notPassReason" onClick={(e) => e.stopPropagation()} className="w-full border-b border-red-300 outline-none text-red-700 mt-2" placeholder="ระบุเหตุผล..."/>}
               </SummaryOption>
               <SummaryOption label="อื่นๆ" checked={formData.otherOpinion} onClick={()=>handleOpinionChange('other')} disabled={isReadOnly('general')}>
-                   {formData.otherOpinion && <input type="text" value={formData.otherOpinionText} onChange={handleInputChange} name="otherOpinionText" className="w-full border-b border-blue-300 outline-none text-blue-700 mt-2" placeholder="ระบุความเห็น..."/>}
+                   {formData.otherOpinion && <input type="text" value={formData.otherOpinionText} onChange={handleInputChange} name="otherOpinionText" onClick={(e) => e.stopPropagation()} className="w-full border-b border-blue-300 outline-none text-blue-700 mt-2" placeholder="ระบุความเห็น..."/>}
               </SummaryOption>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-6 border-t">
