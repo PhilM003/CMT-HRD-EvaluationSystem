@@ -272,7 +272,7 @@ Error generating stack: `+e.message+`
                       </span>
                   </div>
               </div>
-                <div class="flex justify-end" style="padding-right: 15px; text-align: right; font-size:11px;">
+                <div class="flex justify-end" style="margin-top: 20px; padding-right: 15px; text-align: right; font-size:11px;">
                      <div class="text-center" style="text-align: center;">
                         <div class="sig-line" style="margin:0 auto;">
                             <span>${e.hrSign?`<img src="${e.hrSign}" class="sig-img">`:``}</span>
@@ -295,7 +295,7 @@ Error generating stack: `+e.message+`
                       </span>
                   </div>
                 </div>
-                <div class="flex justify-end" style="padding-right: 15px; text-align: right; font-size:11px;">
+                <div class="flex justify-end" style="margin-top: 20px; padding-right: 15px; text-align: right; font-size:11px;">
                      <div class="text-center" style="text-align: center;">
                         <div class="sig-line" style="margin:0 auto;">
                         <span>${e.approverSign?`<img src="${e.approverSign}" class="sig-img">`:``}</span>
