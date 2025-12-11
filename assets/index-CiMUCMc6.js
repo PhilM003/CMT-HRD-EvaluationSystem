@@ -259,11 +259,14 @@ Error generating stack: `+e.message+`
 
             <div class="section-box no-border-top">
                 <div style="margin-bottom:10px; font-size:11px; display:flex; flex-direction:column;">
-                  <span class="sig-label" style="min-width:70px;">
-                      ความเห็น (Opinion) : แผนกบริหารทรัพยากรมนุษย์
-                  </span>
                   <div style="display:flex; align-items:flex-end; gap:5px;">
-                      <span class="sig-label">(Human Resource Management Department) : </span>
+                        แผนกบริหารทรัพยากรมนุษย์ 
+                  </div>
+                  <div style="display:flex; align-items:flex-end; gap:5px;">
+                        (Human Resource Management Department)
+                  </div>
+                  <div style="display:flex; align-items:flex-end; gap:5px;">
+                      <span class="sig-label">ความเห็น (Opinion) : </span>
                       <span class="border-b" style="flex:1; color:blue; display:inline-block;">
                           ${e.hrOpinion||``}
                       </span>
@@ -281,11 +284,12 @@ Error generating stack: `+e.message+`
 
             <div class="section-box no-border-top">
                 <div style="margin-bottom:10px; font-size:11px; display:flex; flex-direction:column;">
-                  <span class="sig-label" style="min-width:70px;">
-                      ผู้อนุมัติ (Approver) : ประธานเจ้าหน้าที่บริหาร 
-                  </span>
                   <div style="display:flex; align-items:flex-end; gap:5px;">
-                      <span class="sig-label">(Chief Executive Officer) : </span>
+                      ประธานเจ้าหน้าที่บริหาร</div>
+                  <div style="display:flex; align-items:flex-end; gap:5px;">
+                      (Chief Executive Officer)</div>
+                  <div style="display:flex; align-items:flex-end; gap:5px;">
+                      <span class="sig-label">ความเห็น (Opinion) : </span>
                       <span class="border-b" style="flex:1; color:blue; display:inline-block;">
                           ${e.approverOpinion||``}
                       </span>
