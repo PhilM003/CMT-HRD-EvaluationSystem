@@ -1725,17 +1725,20 @@ const htmlContent = `
 
             <div class="section-box no-border-top">
                 <div style="margin-bottom:10px; font-size:11px; display:flex; flex-direction:column;">
-                  <span class="sig-label" style="min-width:70px;">
-                      ความเห็น (Opinion) : แผนกบริหารทรัพยากรมนุษย์
-                  </span>
                   <div style="display:flex; align-items:flex-end; gap:5px;">
-                      <span class="sig-label">(Human Resource Management Department) : </span>
+                        แผนกบริหารทรัพยากรมนุษย์ 
+                  </div>
+                  <div style="display:flex; align-items:flex-end; gap:5px;">
+                        (Human Resource Management Department)
+                  </div>
+                  <div style="display:flex; align-items:flex-end; gap:5px;">
+                      <span class="sig-label">ความเห็น (Opinion) : </span>
                       <span class="border-b" style="flex:1; color:blue; display:inline-block;">
                           ${data.hrOpinion || ''}
                       </span>
                   </div>
               </div>
-                <div class="flex justify-end" style="padding-right: 15px; text-align: right; font-size:11px;">
+                <div class="flex justify-end" style="margin-top: 20px; padding-right: 15px; text-align: right; font-size:11px;">
                      <div class="text-center" style="text-align: center;">
                         <div class="sig-line" style="margin:0 auto;">
                             <span>${data.hrSign ? `<img src="${data.hrSign}" class="sig-img">` : ''}</span>
@@ -1747,17 +1750,18 @@ const htmlContent = `
 
             <div class="section-box no-border-top">
                 <div style="margin-bottom:10px; font-size:11px; display:flex; flex-direction:column;">
-                  <span class="sig-label" style="min-width:70px;">
-                      ผู้อนุมัติ (Approver) : ประธานเจ้าหน้าที่บริหาร 
-                  </span>
                   <div style="display:flex; align-items:flex-end; gap:5px;">
-                      <span class="sig-label">(Chief Executive Officer) : </span>
+                      ประธานเจ้าหน้าที่บริหาร</div>
+                  <div style="display:flex; align-items:flex-end; gap:5px;">
+                      (Chief Executive Officer)</div>
+                  <div style="display:flex; align-items:flex-end; gap:5px;">
+                      <span class="sig-label">ความเห็น (Opinion) : </span>
                       <span class="border-b" style="flex:1; color:blue; display:inline-block;">
                           ${data.approverOpinion || ''}
                       </span>
                   </div>
                 </div>
-                <div class="flex justify-end" style="padding-right: 15px; text-align: right; font-size:11px;">
+                <div class="flex justify-end" style="margin-top: 20px; padding-right: 15px; text-align: right; font-size:11px;">
                      <div class="text-center" style="text-align: center;">
                         <div class="sig-line" style="margin:0 auto;">
                         <span>${data.approverSign ? `<img src="${data.approverSign}" class="sig-img">` : ''}</span>
