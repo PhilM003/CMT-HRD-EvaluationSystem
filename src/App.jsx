@@ -90,7 +90,8 @@ export default function App() {
     email_hr: '', 
     role_hr_title: 'ฝ่ายบุคคล (HR)', // Default value
     email_approver: '',
-    role_approver_title: 'ผู้อนุมัติ (Approver)' // Default value
+    role_approver_title: 'ผู้อนุมัติ (Approver)', // Default value
+    sender_name: 'HR Evaluation System'
   }); 
   const [selectedEval, setSelectedEval] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -305,7 +306,8 @@ const SettingsModal = ({ onClose, currentSettings, onSave, setGlobalLoading }) =
     role_hr_title: currentSettings.role_hr_title || 'ฝ่ายบุคคล (HR)',
     email_hr: currentSettings.email_hr || '',
     role_approver_title: currentSettings.role_approver_title || 'ผู้อนุมัติ (Approver)',
-    email_approver: currentSettings.email_approver || ''
+    email_approver: currentSettings.email_approver || '',
+    sender_name: currentSettings.sender_name || 'HR Evaluation System'
   });
 
   const handleSave = async () => {
@@ -335,6 +337,26 @@ const SettingsModal = ({ onClose, currentSettings, onSave, setGlobalLoading }) =
         </div>
         
         <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
+           <div className="bg-gray-50/50 p-4 rounded-xl border border-gray-100">
+             <h4 className="font-bold text-primary-navy mb-3 flex items-center gap-2">
+                <div className="w-6 h-6 rounded-full bg-gray-500 text-white flex items-center justify-center text-xs">0</div>
+                ตั้งค่าทั่วไป (General)
+             </h4>
+             <div className="space-y-4 pl-8">
+               <div>
+                  <label className="block text-xs font-bold text-neutral-medium mb-1">ชื่อผู้ส่งอีเมล (Sender Name)</label>
+                  <input 
+                    type="text" 
+                    value={formData.sender_name} 
+                    onChange={e => setFormData({...formData, sender_name: e.target.value})}
+                    className="w-full border border-secondary-silver rounded-lg p-2.5 text-sm focus:border-primary-gold outline-none"
+                    placeholder="เช่น HR System, Admin, บริษัท ABC จำกัด"
+                  />
+                  <p className="text-[10px] text-gray-400 mt-1">ชื่อที่จะแสดงในกล่องจดหมายของผู้รับ (แทนที่อีเมลเปล่าๆ)</p>
+               </div>
+             </div>
+           </div>
+
            {/* ส่วนที่ 1: HR */}
            <div className="bg-blue-50/50 p-4 rounded-xl border border-blue-100">
              <h4 className="font-bold text-primary-navy mb-3 flex items-center gap-2">
@@ -1384,6 +1406,7 @@ const sendGmailNotification = async (employeeName, currentStatus, nextStatus, ev
   // ใช้ค่าจาก Settings (พร้อมชื่อตำแหน่ง)
   const hrTitle = settings?.role_hr_title || 'HR Manager';
   const approverTitle = settings?.role_approver_title || 'CEO';
+  const senderName = settings?.sender_name || 'HR Evaluation System';
   
   const emailSystem = settings?.email_system || 'carpetmaker05@gmail.com';
   const emailHR = settings?.email_hr || 'carpetmaker05@gmail.com';
@@ -1424,7 +1447,8 @@ const sendGmailNotification = async (employeeName, currentStatus, nextStatus, ev
             action: 'sendEmail', 
             to: toEmail,
             subject: subject,
-            html: messageHtml 
+            html: messageHtml,
+            senderName: senderName
         });
         console.log('Email sent successfully to ' + toEmail);
     } catch (error) {
@@ -1576,7 +1600,7 @@ const htmlContent = `
                         <div style="margin-top:2px;">The Carpet Maker (Thailand) Ltd. And</div>
                         <div>The Carpet Maker P2W (Thailand) Ltd.</div>
                     </div>
-                    <div class="form-title" style="width:45%">
+                    <div class="form-title" style="width:45%; text-align:center;">
                         <h1>แบบประเมินผลการทดลองงานของพนักงาน</h1>
                         <p>Probation Evaluation Form</p>
                     </div>
